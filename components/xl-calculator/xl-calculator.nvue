@@ -1,0 +1,368 @@
+<template>
+	<view class="calculator-view">
+		<view class="calculator-view-top">
+			<view class="calculator-view-top-b">
+				<!-- #ifdef APP-NVUE -->
+				<text class="calculator-view-top-b1">{{ bottomText }}</text>
+				<!-- #endif -->
+				<!-- #ifndef APP-NVUE -->
+				<view class="calculator-view-top-b1">{{ bottomText }}</view>
+				<!-- #endif -->
+				<image class="calculator-view-top-b2" src="/static/delete-1.png" @tap="deleteNum"></image>
+			</view>
+		</view>
+		<view class="calculator-button">
+			<view class="calculator-button-left">
+				<view  class="calculator-button-left-aview">
+					<view class="calculator-button-left-a2"></view>
+					<view class="calculator-button-left-a" @tap="numTapA(1)">
+						<text class="calculator-button-left-a1">{{ 1 }}</text>
+					</view>
+				</view>
+				<view  class="calculator-button-left-aview">
+					<view class="calculator-button-left-a2"></view>
+					<view class="calculator-button-left-a" @tap="numTapA(2)">
+						<text class="calculator-button-left-a1">{{ 2 }}</text>
+					</view>
+				</view>
+				<view  class="calculator-button-left-aview">
+					<view class="calculator-button-left-a2"></view>
+					<view class="calculator-button-left-a" @tap="numTapA(3)">
+						<text class="calculator-button-left-a1">{{ 3 }}</text>
+					</view>
+				</view>
+				<view  class="calculator-button-left-aview">
+					<view class="calculator-button-left-a2"></view>
+					<view class="calculator-button-left-a" @tap="numTapA(4)">
+						<text class="calculator-button-left-a1">{{4}}</text>
+					</view>
+				</view>
+				<view  class="calculator-button-left-aview">
+					<view class="calculator-button-left-a2"></view>
+					<view class="calculator-button-left-a" @tap="numTapA(5)">
+						<text class="calculator-button-left-a1">{{ 5 }}</text>
+					</view>
+				</view>
+				<view  class="calculator-button-left-aview">
+					<view class="calculator-button-left-a2"></view>
+					<view class="calculator-button-left-a" @tap="numTapA(6)">
+						<text class="calculator-button-left-a1">{{ 6 }}</text>
+					</view>
+				</view>
+				<view  class="calculator-button-left-aview">
+					<view class="calculator-button-left-a2"></view>
+					<view class="calculator-button-left-a" @tap="numTapA(7)">
+						<text class="calculator-button-left-a1">{{ 7 }}</text>
+					</view>
+				</view>
+				<view  class="calculator-button-left-aview">
+					<view class="calculator-button-left-a2"></view>
+					<view class="calculator-button-left-a" @tap="numTapA(8)">
+						<text class="calculator-button-left-a1">{{ 8 }}</text>
+					</view>
+				</view>
+				<view  class="calculator-button-left-aview">
+					<view class="calculator-button-left-a2"></view>
+					<view class="calculator-button-left-a" @tap="numTapA(9)">
+						<text class="calculator-button-left-a1">{{ 9 }}</text>
+					</view>
+				</view>
+				<view  class="calculator-button-left-aview" style="background:#d1d1d1;">
+					<view class="calculator-button-left-a2"></view>
+					<view class="calculator-button-left-a" @tap="operationalTapA('附录')">
+						<text class="calculator-button-left-a1" style="color: #000; font-size: 15rpx;">附录</text>
+					</view>
+				</view>
+				<view  class="calculator-button-left-aview">
+					<view class="calculator-button-left-a2"></view>
+					<view class="calculator-button-left-a" @tap="numTapA(0)">
+						<text class="calculator-button-left-a1">{{ 0 }}</text>
+					</view>
+				</view>
+				<view  class="calculator-button-left-aview" style="background:#fd8008;">
+					<view class="calculator-button-left-a2"></view>
+					<view class="calculator-button-left-a" @tap="operationalTapC()">
+						<text class="calculator-button-left-a1" style="color: #FFFFFF; font-size: 15rpx;">确定</text>
+					</view>
+				</view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script>
+export default {
+	data() {
+		return {
+			calculatorButAList: ['7', '8', '9', '4', '5', '6', '1', '2', '3'],
+			calculatorButBList: ['0', '00'],
+			calculatorButCList: ['附录'],
+			calculatorButDList: ['','',''],
+			topText: '',
+			bottomText: ''
+		};
+	},
+	methods: {
+		closeCalculatorPopup() {
+			this.$emit('closeCalculatorPopup');
+		},
+		// 清零
+		clearAll() {
+			this.bottomText = '';
+			this.topText = '';
+		},
+		// 删除一位字符
+		deleteNum() {
+			if (this.bottomText == 'Infinity' || this.bottomText == 'NaN') {
+				this.bottomText = '';
+				return;
+			}
+			if (this.bottomText) {
+				this.bottomText = this.bottomText.slice(0, -1);
+				// if(!this.bottomText){
+				// 	this.topText = '';
+				// }
+				return;
+			}
+
+			if (this.topText) {
+				let temp = this.topText.split(' ');
+				temp.pop();
+				this.topText = temp.join(' ');
+				// this.topText = this.topText.slice(0, -1);
+				// this.topText = '';
+			}
+		},
+		// 1-9输入判断
+		numTapA(item) {
+			if (this.bottomText.length == 1 && this.bottomText == 0) {
+				return;
+			}
+			if (this.bottomText == 'Infinity' || this.bottomText == 'NaN') {
+				this.bottomText = '';
+			}
+			this.bottomText += item;
+		},
+		// 0,00输入判断
+		numTapB(item) {
+			if (this.bottomText.length == 1 && this.bottomText == 0) {
+				return;
+			}
+			if (item == '00' && this.bottomText == '') {
+				return;
+			}
+			if (this.bottomText == 'Infinity' || this.bottomText == 'NaN') {
+				this.bottomText = '';
+			}
+			this.bottomText += item;
+		},
+		// .输入判断
+		numTapC() {
+			if (this.bottomText == 'Infinity' || this.bottomText == 'NaN') {
+				this.bottomText = '';
+			}
+			if (!this.bottomText) {
+				return;
+			}
+			if (this.bottomText.indexOf('.') != '-1') {
+				return;
+			}
+			this.bottomText += '.';
+		},
+		//  × ÷ 输入
+		operationalTapA(item) {
+			this.bottomText = "附录" + this.bottomText
+		},
+		// + - 输入
+		operationalTapB(item) {
+			if (this.bottomText == 'Infinity' || this.bottomText == 'NaN') {
+				this.bottomText = '';
+				return;
+			}
+			if (this.bottomText) {
+				if (this.bottomText.endsWith('.')) {
+					return;
+				}
+				if (this.bottomText.endsWith('-')) {
+					return;
+				}
+				if (this.topText) {
+					if (this.topText.endsWith('=')) {
+						this.topText = this.bottomText + ' ' + item;
+						this.bottomText = '';
+						return;
+					}
+					let numList = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '0'];
+					let lastT = this.topText.slice(-1);
+					if (numList.includes(lastT)) {
+						this.topText = this.topText + this.bottomText + ' ' + item;
+					} else {
+						this.topText = this.topText + ' ' + this.bottomText + ' ' + item;
+					}
+				} else {
+					this.topText = this.bottomText + ' ' + item;
+				}
+				this.bottomText = '';
+				return;
+			}
+			// 首位字符允许为-
+			if (item == '-') {
+				this.bottomText = item;
+				return;
+			}
+		},
+		// = 输入
+		operationalTapC() {
+			let that = this
+			uni.$emit('switchPome',{pomeNo:that.bottomText})
+			this.bottomText = ''
+		},
+		// 运算代理
+		operationHandle(resStr) {
+			let regA = /×/gi;
+			let regB = /÷/gi;
+			let expression = resStr.replace(regA, '*');
+			expression = expression.replace(regB, '/');
+
+			// #ifdef MP-WEIXIN
+			// 小程序禁用 eval(),故自行计算结果
+			// 将表达式转成数组
+			let expressionList = expression.split(' ');
+			// 自定义实现 * / 运算
+			for (let i = 1; i < expressionList.length; i += 2) {
+				let symbol = expressionList[i];
+				let left = expressionList[i - 1];
+				let right = expressionList[i + 1];
+				if (symbol == '*') {
+					expressionList[i - 1] = -1;
+					expressionList[i] = -1;
+					expressionList[i + 1] = left * right;
+				}
+				if (symbol == '/') {
+					expressionList[i - 1] = -1;
+					expressionList[i] = -1;
+					expressionList[i + 1] = left / right;
+				}
+			}
+			// 去除标空数据 -1
+			expressionList = expressionList.filter(item => item != -1);
+
+			// 自定义实现 + - 运算
+			for (let i = 1; i < expressionList.length; i += 2) {
+				let symbol = expressionList[i];
+				let left = expressionList[i - 1];
+				let right = expressionList[i + 1];
+				if (symbol == '+') {
+					expressionList[i - 1] = -1;
+					expressionList[i] = -1;
+					expressionList[i + 1] = left * 1 + right * 1;
+				}
+				if (symbol == '-') {
+					expressionList[i - 1] = -1;
+					expressionList[i] = -1;
+					expressionList[i + 1] = left - right;
+				}
+			}
+			expressionList = expressionList.filter(item => item != -1);
+			expressionList = expressionList.filter(item => item);
+			// 结果
+			let res = expressionList[0];
+
+			if (this.isFloat(res)) {
+				res = parseFloat(res.toPrecision(12));
+			}
+			this.bottomText = res + '';
+			return;
+			// #endif
+
+			// 结果数值 非小程序
+			let resNum = eval(expression);
+			if (this.isFloat(resNum)) {
+				resNum = parseFloat(resNum.toPrecision(12));
+			}
+			this.bottomText = resNum + '';
+		},
+		// 判断是否浮点数
+		isFloat(n) {
+			return n != parseInt(n);
+		}
+	}
+};
+</script>
+
+<style>
+.calculator-view {
+	width: 360rpx;
+	display: flex;
+	flex-direction: column;
+	background-color: #ffffff;
+}
+.calculator-view-top {
+	box-sizing: border-box;
+	width: 360rpx;
+	background-color: #ffffff;
+	padding-left: 30rpx;
+	padding-right: 30rpx;
+	display: flex;
+	flex-direction: column;
+}
+.calculator-view-top-a {
+	font-size: 36rpx;
+	min-height: 40rpx;
+	color: #606060;
+	text-align: right;
+}
+.calculator-view-top-b {
+	margin-top: 10rpx;
+	min-height: 40rpx;
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+}
+.calculator-view-top-b1 {
+	/* width: 330rpx; */
+	/* white-space: pre-wrap; */
+	word-wrap: break-word;
+	font-size: 20rpx;
+	text-align: left;
+	color: #606060;
+}
+.calculator-view-top-b2 {
+	width: 35rpx;
+	height: 35rpx;
+}
+.calculator-button {
+	width: 360rpx;
+	display: flex;
+	flex-direction: row;
+}
+.calculator-button-left {
+	width: 360rpx;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+}
+.calculator-button-left-a {
+	position: relative;
+	width: 120rpx;
+	height: 40rpx;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	/* background-color: #ffffff; */
+}
+.calculator-button-left-aview {
+	width: 120rpx;
+	height: 40rpx;
+	position: relative;
+}
+.calculator-button-left-a1 {
+	font-size: 20rpx;
+	color: #212121;
+}
+.calculator-button-left-a:active {
+	opacity: 0.7;
+}
+</style>
