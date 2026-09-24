@@ -202,6 +202,51 @@ class BiblePlanManager {
     }, 2000); // 2秒防抖
   }
 
+// 挑选进度更靠前的书卷/章节指针（防止空白新设备重置老设备阅读进度）
+function pickFurtherTrack(localTrack, cloudTrack) {
+  if (!localTrack && !cloudTrack) return { sn: 1, bookId: 'genesis', chapter: 1 };
+  if (!localTrack) return cloudTrack;
+  if (!cloudTrack) return localTrack;
+
+  const isLocalInitial = (Number(localTrack.sn) === 1 || !localTrack.sn) && (Number(localTrack.chapter) === 1 || !localTrack.chapter);
+  const isCloudInitial = (Number(cloudTrack.sn) === 1 || !cloudTrack.sn) && (Number(cloudTrack.chapter) === 1 || !cloudTrack.chapter);
+
+  if (isLocalInitial && !isCloudInitial) return cloudTrack;
+  if (isCloudInitial && !isLocalInitial) return localTrack;
+
+  const localSn = Number(localTrack.sn) || 1;
+  const cloudSn = Number(cloudTrack.sn) || 1;
+  if (localSn > cloudSn) return localTrack;
+  if (cloudSn > localSn) return cloudTrack;
+
+  const localChap = Number(localTrack.chapter) || 1;
+  const cloudChap = Number(cloudTrack.chapter) || 1;
+  if (localChap > cloudChap) return localTrack;
+  return cloudTrack;
+}
+
+function pickFurtherSubTrack(localTrack, cloudTrack) {
+  if (!localTrack && !cloudTrack) return { sn: 40, bookId: 'matthew', chapter: 1 };
+  if (!localTrack) return cloudTrack;
+  if (!cloudTrack) return localTrack;
+
+  const isLocalInitial = (Number(localTrack.sn) === 40 || !localTrack.sn) && (Number(localTrack.chapter) === 1 || !localTrack.chapter);
+  const isCloudInitial = (Number(cloudTrack.sn) === 40 || !cloudTrack.sn) && (Number(cloudTrack.chapter) === 1 || !cloudTrack.chapter);
+
+  if (isLocalInitial && !isCloudInitial) return cloudTrack;
+  if (isCloudInitial && !isLocalInitial) return localTrack;
+
+  const localSn = Number(localTrack.sn) || 40;
+  const cloudSn = Number(cloudTrack.sn) || 40;
+  if (localSn > cloudSn) return localTrack;
+  if (cloudSn > localSn) return cloudTrack;
+
+  const localChap = Number(localTrack.chapter) || 1;
+  const cloudChap = Number(cloudTrack.chapter) || 1;
+  if (localChap > cloudChap) return localTrack;
+  return cloudTrack;
+}
+
   // 智能并集合并两个读经计划，保证老用户数据“只增不减、绝对不丢失”
   mergePlans(localPlan, cloudPlan) {
     if (!localPlan) return cloudPlan;
@@ -221,12 +266,18 @@ class BiblePlanManager {
       Number(localPlan.todayFocusMinutes) || 0,
       Number(cloudPlan.todayFocusMinutes) || 0
     );
+    const mergedFocusTotal = Math.max(
+      Number(localPlan.focusMinutesTotal) || 0,
+      Number(cloudPlan.focusMinutesTotal) || 0
+    );
+    const mergedStreakDays = Math.max(
+      Number(localPlan.streakDays) || 0,
+      Number(cloudPlan.streakDays) || 0
+    );
 
-    // 3. 合并 tracks (轨道卷章进度保留最新或更大者)
-    const mergedTracks = {
-      ...(cloudPlan.tracks || {}),
-      ...(localPlan.tracks || {})
-    };
+    // 3. 智能合并主轨与辅轨卷章进度 (核心修复：永远取进度更靠前的书卷指针，防止新设备空白创世记1章覆盖已有成果)
+    const mergedMainTrack = pickFurtherTrack(localPlan.mainTrack, cloudPlan.mainTrack);
+    const mergedSubTrack = pickFurtherSubTrack(localPlan.subTrack, cloudPlan.subTrack);
 
     // 3.5 合并 dailyFocusMinutes 每日时长历史字典 (按天取较大值，绝不遗漏)
     const mergedDailyFocus = { ...(cloudPlan.dailyFocusMinutes || {}) };
@@ -243,15 +294,25 @@ class BiblePlanManager {
       mergedStatus = PLAN_STATUS.COLD_START;
     }
 
+    const mergedDailyTarget = cloudPlan.dailyTargetWords || localPlan.dailyTargetWords || 5000;
+
     return {
       ...cloudPlan,
       ...localPlan,
       status: mergedStatus,
+      mainTrack: mergedMainTrack,
+      subTrack: mergedSubTrack,
       finishedChapters: mergedFinished,
       totalFinishedWords: mergedTotalWords,
       todayFocusMinutes: mergedFocusMinutes,
+      focusMinutesTotal: mergedFocusTotal,
+      streakDays: mergedStreakDays,
       dailyFocusMinutes: mergedDailyFocus,
-      tracks: mergedTracks,
+      targetWeeks: cloudPlan.targetWeeks || localPlan.targetWeeks || 26,
+      dailyTargetWords: mergedDailyTarget,
+      weeklyTargetWords: mergedDailyTarget * 7,
+      startDate: cloudPlan.startDate || localPlan.startDate || getTodayString(),
+      timeSlot: cloudPlan.timeSlot || localPlan.timeSlot || TIME_SLOT.NIGHT,
       lastReadDate: localPlan.lastReadDate || cloudPlan.lastReadDate || getTodayString()
     };
   }
