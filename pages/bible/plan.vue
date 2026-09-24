@@ -834,7 +834,7 @@ export default {
 		uni.$off('planProgressUpdated');
 	},
 
-	onShow() {
+	async onShow() {
 		this.isAudit = isAuditMode();
 		if (this.isAudit) return;
 
@@ -846,7 +846,21 @@ export default {
 			this.openAuthModal();
 		}
 
+		// 先用本地缓存即时渲染，保障秒开
 		this.refreshData();
+
+		// 异步从云端拉取最新读经计划和团队进展，完成后无感对齐刷新
+		if (this.isLoggedIn) {
+			try {
+				await planManager.pullAndMerge(false);
+				if (this.teamDashboard) {
+					await userTeamManager.fetchCloudTeamInfo();
+				}
+				this.refreshData();
+			} catch (e) {
+				console.warn('[Plan] 云端自动同步跳过:', e);
+			}
+		}
 	},
 
 	methods: {

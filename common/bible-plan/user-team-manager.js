@@ -54,6 +54,8 @@ function getTodayString() {
 
 // 统一封装云端请求
 function requestCloud(url, method = 'GET', data = {}) {
+  const userInfo = uni.getStorageSync('VALLEY_USER_INFO') || uni.getStorageSync(USER_STORAGE_KEY);
+  const openid = (userInfo && userInfo.openid) ? userInfo.openid : '';
   return new Promise((resolve) => {
     uni.request({
       url: `${API_BASE}${url}`,
@@ -61,7 +63,8 @@ function requestCloud(url, method = 'GET', data = {}) {
       data: data,
       timeout: 5000,
       header: {
-        'content-type': 'application/json'
+        'content-type': 'application/json',
+        'x-openid': openid
       },
       success: (res) => {
         if (res.statusCode === 200 && res.data && res.data.code === 0) {
@@ -446,7 +449,10 @@ class UserTeamManager {
     const openid = this.user ? this.user.openid : '';
     if (!code && !openid) return null;
 
-    let query = code ? `?teamCode=${encodeURIComponent(code)}` : `?openid=${encodeURIComponent(openid)}`;
+    const params = [];
+    if (code) params.push(`teamCode=${encodeURIComponent(code)}`);
+    if (openid) params.push(`openid=${encodeURIComponent(openid)}`);
+    const query = params.length > 0 ? `?${params.join('&')}` : '';
     const res = await requestCloud(`/team/info${query}`, 'GET');
 
     if (res.success && res.data) {

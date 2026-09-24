@@ -5,6 +5,8 @@ import { BIBLE_API_BASE } from '../config.js';
 
 // 统一封装云端请求
 function requestCloud(url, method = 'GET', data = {}) {
+  const userInfo = uni.getStorageSync('VALLEY_USER_INFO') || uni.getStorageSync('VALLEY_BIBLE_USER_INFO_V1');
+  const openid = (userInfo && userInfo.openid) ? userInfo.openid : '';
   return new Promise((resolve) => {
     uni.request({
       url: `${BIBLE_API_BASE}${url}`,
@@ -12,7 +14,8 @@ function requestCloud(url, method = 'GET', data = {}) {
       data: data,
       timeout: 5000,
       header: {
-        'content-type': 'application/json'
+        'content-type': 'application/json',
+        'x-openid': openid
       },
       success: (res) => {
         if (res.statusCode === 200 && res.data && res.data.code === 0) {
