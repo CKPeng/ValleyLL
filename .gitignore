@@ -2,3 +2,15 @@ node_modules/
 unpackage/
 .DS_Store
 *.log
+
+# 临时排查与数据库脚本
+check_*.js
+alterdb*.js
+migrate_users.js
+script*.js
+checkdb.js
+server/script*.js
+
+# 备份与导出文件
+*.recovered
+*_dump.txt
