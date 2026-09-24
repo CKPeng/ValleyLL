@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ValleyLL 控制台</title>
+    <!-- 引入 Vue 和 Element Plus -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
+    <script src="https://unpkg.com/element-plus"></script>
+    <style>
+        body { margin: 0; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f5f7fa; }
+        #app { max-width: 900px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1); }
+        .login-box { max-width: 400px; margin: 100px auto; text-align: center; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ebeef5; padding-bottom: 20px; margin-bottom: 20px; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; vertical-align: middle; margin-right: 10px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 登录界面 -->
+        <div v-if="!token" class="login-box">
+            <h2>ValleyLL 管理员登录</h2>
+            <el-form label-width="80px" style="margin-top: 30px;">
+                <el-form-item label="邮箱">
+                    <el-input v-model="email" placeholder="请输入管理员邮箱"></el-input>
+                </el-form-item>
+                <el-form-item label="验证码">
+                    <el-row :gutter="10">
+                        <el-col :span="14">
+                            <el-input v-model="code" placeholder="6位数验证码"></el-input>
+                        </el-col>
+                        <el-col :span="10">
+                            <el-button @click="sendCode" :disabled="countdown > 0" type="primary" plain style="width: 100%;">
+                                {{ countdown > 0 ? countdown + 's 后重发' : '获取验证码' }}
+                            </el-button>
+                        </el-col>
+                    </el-row>
+                </el-form-item>
+                <el-button type="primary" @click="login" style="width: 100%; margin-top: 20px;">登录</el-button>
+            </el-form>
+        </div>
+
+        <!-- 控制台界面 -->
+        <div v-else>
+            <div class="header">
+                <h2>ValleyLL 控制台</h2>
+                <el-button type="danger" @click="logout" size="small">退出登录</el-button>
+            </div>
+
+            <el-card shadow="never" style="margin-bottom: 20px;">
+                <template #header>
+                    <div style="font-weight: bold;">全局设置</div>
+                </template>
+                <div style="display: flex; align-items: center;">
+                    <span style="margin-right: 20px;">全局审核伪装模式：</span>
+                    <el-switch v-model="globalAudit" @change="updateGlobalAudit" 
+                        active-text="正常读经" inactive-text="图片伪装" 
+                        active-color="#13ce66" inactive-color="#ff4949">
+                    </el-switch>
+                </div>
+                <p style="font-size: 13px; color: #999; margin-top: 10px;">
+                    * 当开启“图片伪装”时，普通用户只能看到风景图。超级白名单用户不受此限制。
+                </p>
+            </el-card>
+
+            <el-card shadow="never">
+                <template #header>
+                    <div style="font-weight: bold;">用户白名单管理</div>
+                </template>
+                <el-table :data="users" style="width: 100%" v-loading="loading">
+                    <el-table-column label="用户">
+                        <template #default="scope">
+                            <div style="display: flex; align-items: center;">
+                                <img :src="formatAvatar(scope.row.avatar)" class="user-avatar" />
+                                <span>{{ scope.row.nickname || '未授权用户' }}</span>
+                            </div>
+                        </template>
+                    </el-table-column>
+                    <el-table-column prop="openid" label="OpenID"></el-table-column>
+                    <el-table-column label="超级白名单" width="150" align="center">
+                        <template #default="scope">
+                            <el-switch 
+                                :model-value="scope.row.is_whitelist === 1"
+                                @change="(val) => toggleWhitelist(scope.row, val)"
+                                active-color="#13ce66">
+                            </el-switch>
+                        </template>
+                    </el-table-column>
+                </el-table>
+            </el-card>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const token = ref(localStorage.getItem('valley_admin_token') || '');
+                const email = ref('');
+                const code = ref('');
+                const countdown = ref(0);
+                const globalAudit = ref(false);
+                const users = ref([]);
+                const loading = ref(false);
+
+                // API 请求封装
+                const apiFetch = async (url, options = {}) => {
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (token.value) headers['Authorization'] = `Bearer ${token.value}`;
+                    options.headers = headers;
+                    const res = await fetch(url, options);
+                    const data = await res.json();
+                    if (data.code === 401) {
+                        logout();
+                        ElementPlus.ElMessage.error('登录已过期');
+                        throw new Error('Unauthorized');
+                    }
+                    if (data.code !== 0) {
+                        ElementPlus.ElMessage.error(data.msg || '请求失败');
+                        throw new Error(data.msg);
+                    }
+                    return data.data;
+                };
+
+                const sendCode = async () => {
+                    if (!email.value) return ElementPlus.ElMessage.warning('请输入邮箱');
+                    try {
+                        await apiFetch('/admin/api/send-code', {
+                            method: 'POST',
+                            body: JSON.stringify({ email: email.value })
+                        });
+                        ElementPlus.ElMessage.success('验证码发送成功');
+                        countdown.value = 60;
+                        const timer = setInterval(() => {
+                            countdown.value--;
+                            if (countdown.value <= 0) clearInterval(timer);
+                        }, 1000);
+                    } catch (e) {}
+                };
+
+                const login = async () => {
+                    if (!email.value || !code.value) return ElementPlus.ElMessage.warning('请填写完整');
+                    try {
+                        const data = await apiFetch('/admin/api/login', {
+                            method: 'POST',
+                            body: JSON.stringify({ email: email.value, code: code.value })
+                        });
+                        token.value = data.token;
+                        localStorage.setItem('valley_admin_token', token.value);
+                        ElementPlus.ElMessage.success('登录成功');
+                        fetchData();
+                    } catch (e) {}
+                };
+
+                const logout = () => {
+                    token.value = '';
+                    localStorage.removeItem('valley_admin_token');
+                };
+
+                const fetchData = async () => {
+                    if (!token.value) return;
+                    loading.value = true;
+                    try {
+                        const auditData = await apiFetch('/admin/api/global-audit');
+                        globalAudit.value = auditData.showPlay;
+
+                        const userData = await apiFetch('/admin/api/users');
+                        users.value = userData;
+                    } catch (e) {} finally {
+                        loading.value = false;
+                    }
+                };
+
+                const updateGlobalAudit = async (val) => {
+                    try {
+                        await apiFetch('/admin/api/global-audit', {
+                            method: 'POST',
+                            body: JSON.stringify({ showPlay: val })
+                        });
+                        ElementPlus.ElMessage.success('设置已更新');
+                    } catch (e) {
+                        globalAudit.value = !val; // 恢复
+                    }
+                };
+
+                const toggleWhitelist = async (row, val) => {
+                    try {
+                        await apiFetch('/admin/api/users/whitelist', {
+                            method: 'POST',
+                            body: JSON.stringify({ openid: row.openid, is_whitelist: val })
+                        });
+                        row.is_whitelist = val ? 1 : 0;
+                        ElementPlus.ElMessage.success('白名单状态已更新');
+                    } catch (e) {}
+                };
+
+                const formatAvatar = (avatar) => {
+                    if (!avatar || avatar.startsWith('wxfile://') || avatar.startsWith('http://tmp/')) {
+                        return 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png';
+                    }
+                    return avatar;
+                };
+
+                onMounted(() => {
+                    if (token.value) fetchData();
+                });
+
+                return {
+                    token, email, code, countdown, globalAudit, users, loading,
+                    sendCode, login, logout, updateGlobalAudit, toggleWhitelist, formatAvatar
+                }
+            }
+        }).use(ElementPlus).mount('#app');
+    </script>
+</body>
+</html>
