@@ -738,9 +738,9 @@ app.use('/api/wechat', wechatRouter);
 app.use('/api/bible/wechat', wechatRouter);
 app.use('/bible/wechat', wechatRouter);
 
-// 挂载圣经路由 (在审核期彻底切断，正常期完美响应)
-app.use('/bible', bibleAuditCutoff, bibleRouter);
-app.use('/api/bible', bibleAuditCutoff, bibleRouter);
+// 挂载圣经小队与打卡路由 (与 userRouter 一致，始终保障正常组团打卡)
+app.use('/bible', bibleRouter);
+app.use('/api/bible', bibleRouter);
 
 // ==========================================
 // 5. Admin 管理后台 (包含邮件验证码登录、白名单管理、伪装开关)
