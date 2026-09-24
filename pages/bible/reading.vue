@@ -1,27 +1,113 @@
 <template>
 	<view class="reading-container">
-		<!-- 顶部导航栏 -->
-		<view class="nav-bar" :style="{ paddingTop: (20 + statusBarHeight) + 'rpx', height: (100 + statusBarHeight) + 'rpx' }">
-			<view class="nav-left" @click="goBack">
-				<text class="back-icon">‹</text>
-				<text class="back-text">返回</text>
+		<!-- 模式一：审核伪装模式【风物随笔 · 慢生活阅读】 -->
+		<view v-if="isAudit" class="audit-article-view">
+			<view class="nav-bar" :style="{ paddingTop: navBarTop + 'px', height: (navBarTop + navBarHeight + 8) + 'px', paddingRight: capsuleWidth + 'px' }">
+				<view class="nav-left" @click="goBack">
+					<view class="back-arrow-icon"></view>
+					<text class="back-text">返回</text>
+				</view>
+				<view class="nav-center">
+					<text class="nav-title">风物美文</text>
+					<text class="nav-subtitle">自然心境 · 随笔</text>
+				</view>
+				<view class="nav-right-safe"></view>
 			</view>
-			<!-- <view class="nav-center">
-				<button class="nav-btn catalog-btn" @click="showCatalog">目录</button>
-				<button class="nav-btn version-btn">
-					和合本
-					<view class="red-dot"></view>
-				</button>
-			</view> -->
-			<!-- <view class="nav-right">
-				<text class="time-icon"></text>
-			</view> -->
+
+			<scroll-view scroll-y class="audit-article-scroll">
+				<image class="article-banner-img" src="/static/scenery/suzhou.jpg" mode="aspectFill"></image>
+				<view class="article-body-card">
+					<text class="article-h1">江南水乡与慢生活闲居漫记</text>
+					<view class="article-meta-row">
+						<text class="article-author">城市漫游志</text>
+						<text class="article-time">阅读约需 3 分钟</text>
+					</view>
+					<view class="article-content-text">
+						<text class="p-text">流水如诗，山青如墨。行至水穷处，坐看云起时。江南的水，带着特有的温润，静静穿过青石板街与旧瓦屋檐。</text>
+						<text class="p-text">在快节奏的都市喧嚣中，留出二十分钟的静谧时光，听窗外细雨微风，感受自然节律的舒缓从容。不疾不徐，步调匀称，便是最好的生活状态。</text>
+						<text class="p-text">万物有其时令，春生夏长，秋收冬藏。愿你在此刻卸下焦虑，伴着轻柔的水声与微风，找回内心的辽阔与安宁。</text>
+					</view>
+					<button class="return-home-btn" @click="goBack">返回城市漫游首页</button>
+				</view>
+			</scroll-view>
 		</view>
 
-		<!-- 章节标题 -->
-		<view class="chapter-header">
-			<!-- 修改：使用动态的 chapterTitle -->
-			<text class="chapter-title">{{ chapterTitle }}</text>
+		<!-- 模式二：正式开放模式【圣经沉浸式阅读器】 -->
+		<view v-else class="real-reading-view">
+			<!-- 悬浮固定头部区域 -->
+			<view class="sticky-header">
+				<!-- 顶部导航栏 (精准避让微信右上角原生胶囊) -->
+				<view class="nav-bar" :style="{ paddingTop: navBarTop + 'px', height: (navBarTop + navBarHeight + 8) + 'px', paddingRight: capsuleWidth + 'px' }">
+					<view class="nav-left" @click="goBack">
+						<view class="back-arrow-icon"></view>
+						<text class="nav-book-name">{{ currentBookFullName }}</text>
+						<text class="nav-chap-num">{{ chapter }}</text>
+					</view>
+
+					<view class="nav-right-safe">
+						<text class="version-label">和合本</text>
+					</view>
+				</view>
+
+			<!-- 章节辅助控制栏 (微读切换胶囊 + 番茄钟 + 打卡) -->
+			<view class="chapter-sub-bar" v-if="verses.length > 0">
+				<!-- 左侧：排版切换胶囊 (纸版 vs 分节) -->
+				<view class="mode-switch-capsule">
+					<view 
+						class="mode-switch-item" 
+						:class="{ 'is-active': readingMode === 'paper' }"
+						@click.stop="setReadingMode('paper')">
+						<text class="mode-switch-text">纸版</text>
+					</view>
+					<view 
+						class="mode-switch-item" 
+						:class="{ 'is-active': readingMode === 'verse' }"
+						@click.stop="setReadingMode('verse')">
+						<text class="mode-switch-text">分节</text>
+					</view>
+				</view>
+
+				<!-- 中间：专注番茄钟 (仅计划模式显示) -->
+				<view class="sub-center-group">
+					<view v-if="fromPlan" class="timer-pill" :class="{ 'timer-pill-active': timerRunning }" @click.stop="toggleFocusTimer">
+						<text class="timer-icon">⏱</text>
+						<text class="timer-time">{{ formattedTime }}</text>
+					</view>
+				</view>
+
+				<!-- 右侧：打卡按钮 (仅计划模式显示) -->
+				<view v-if="fromPlan" class="chapter-check-btn" :class="{ 'is-checked': isCurrentChapterFinished }" @click="toggleChapterCheck">
+					<text class="check-btn-text">{{ isCurrentChapterFinished ? '已打卡 ✔' : '完成打卡' }}</text>
+				</view>
+				
+				<!-- 右侧：非计划模式下的占位符，保持布局居中对称 -->
+				<view v-else style="width: 140rpx;"></view>
+			</view>
+
+			<!-- 计划模式专属：实时读经进度数据栏 (本章总字数、本章剩余、今日剩余、今日目标) -->
+			<view class="plan-progress-bar" v-if="fromPlan && verses.length > 0">
+				<view class="progress-item">
+					<text class="progress-label">本章总计</text>
+					<text class="progress-value">{{ chapterWordCount }}<text class="progress-unit">字</text></text>
+				</view>
+				<view class="progress-item">
+					<text class="progress-label">本章剩余</text>
+					<text class="progress-value highlight">{{ isCurrentChapterFinished ? 0 : chapterRemainingWords }}<text class="progress-unit">字</text></text>
+				</view>
+				<view class="progress-item">
+					<text class="progress-label">今日剩余</text>
+					<text class="progress-value highlight-today">{{ Math.max(0, todayTargetWords - todayFinishedWords) }}<text class="progress-unit">字</text></text>
+				</view>
+				<view class="progress-item">
+					<text class="progress-label">今日目标</text>
+					<text class="progress-value">{{ todayTargetWords }}<text class="progress-unit">字</text></text>
+				</view>
+			</view>
+			
+			<!-- 非计划模式专属：简单字数提示 -->
+			<view class="casual-progress-bar" v-else-if="!fromPlan && verses.length > 0">
+				<text class="casual-words">本章约 {{ chapterWordCount }} 字 · 剩余约 {{ isCurrentChapterFinished ? 0 : chapterRemainingWords }} 字</text>
+			</view>
 		</view>
 
 		<!-- 加载中提示 -->
@@ -34,15 +120,109 @@
 			<text class="feedback-text">{{ loadingError }}</text>
 		</view>
 
-		<!-- 经文内容 -->
-		<view v-else class="bible-content"
-			@touchstart="handleTouchStart"
-			@touchmove="handleTouchMove"
-			@touchend="handleTouchEnd"
-			@touchcancel="handleTouchEnd">
-			<view v-for="verse in verses" :key="verse.id" class="verse-container">
-				<text class="verse-number">{{ verse.number }}</text>
-				<text class="verse-text">{{ verse.text }}</text>
+		<!-- 经文内容主体：独立滚动区域 (仅在此区域内部滚动，顶部完全静止不动) -->
+		<scroll-view 
+			v-else 
+			scroll-y 
+			class="reading-scroll-area"
+			:scroll-top="scrollTop"
+			@scroll="handleScroll">
+			
+			<view class="bible-content"
+				@click="handleTap"
+				@touchstart="handleTouchStart"
+				@touchend="handleTouchEnd"
+				@touchcancel="handleTouchEnd">
+
+				<!-- 模式一：微读圣经纸版连续排版视图 -->
+				<view v-if="readingMode === 'paper'" class="paper-reading-area">
+					<view v-for="(block, bIdx) in paperBlocks" :key="bIdx" class="paper-block">
+						<!-- 段落小标题 -->
+						<view v-if="block.heading" class="paper-section-title">
+							<text class="section-title-text">{{ block.heading }}</text>
+						</view>
+
+						<!-- 诗歌体缩进段落 -->
+						<view v-if="block.isPoetry" class="paper-poetry-box">
+							<view v-for="verse in block.verses" :key="verse.number" class="poetry-line">
+								<text class="poetry-verse-num">{{ verse.number }}</text>
+								<view class="poetry-text-content">
+									<text 
+										v-for="(tok, tIdx) in verse.tokens" 
+										:key="tIdx" 
+										:class="{ 'proper-noun': tok.isNoun }">{{ tok.text }}</text>
+								</view>
+							</view>
+						</view>
+
+						<!-- 正常散文段落 (流式折行 + Drop Cap 大章号) -->
+						<view v-else class="paper-prose-paragraph">
+							<!-- 大章号 Drop Cap (首字下沉排版) -->
+							<view v-if="block.showDropCap" class="drop-cap-wrap">
+								<text class="drop-cap-num">{{ chapter }}</text>
+							</view>
+
+							<!-- 流式经文行内排版与嵌入式上标小节号 -->
+							<block v-for="verse in block.verses" :key="verse.number">
+								<text v-if="verse.number > 1" class="sup-verse-num">{{ verse.number }}</text>
+								<text 
+									v-for="(tok, tIdx) in verse.tokens" 
+									:key="tIdx" 
+									:class="{ 'proper-noun': tok.isNoun }"
+									class="flow-text-span">{{ tok.text }}</text>
+							</block>
+						</view>
+					</view>
+				</view>
+
+				<!-- 模式二：按节展示视图 (整齐逐节排版) -->
+				<view v-else class="verse-reading-area">
+					<view v-for="verse in verses" :key="verse.id" class="verse-wrapper">
+						<!-- 分节模式段落小标题 -->
+						<view v-if="verse.heading" class="paper-section-title verse-mode-title">
+							<text class="section-title-text">{{ verse.heading }}</text>
+						</view>
+						<view class="verse-container">
+							<text class="verse-number">{{ verse.number }}</text>
+							<view class="verse-text-flow">
+								<text 
+									v-for="(tok, tIdx) in (verse.tokens || [])" 
+									:key="tIdx" 
+									:class="{ 'proper-noun': tok.isNoun }">{{ tok.text }}</text>
+							</view>
+						</view>
+					</view>
+				</view>
+
+				<!-- 经文末尾读完打卡卡片 -->
+				<view class="reading-finish-section" v-if="verses.length > 0">
+					<button class="finish-chapter-btn" :class="{ 'btn-is-checked': isCurrentChapterFinished }" @click="toggleChapterCheck">
+						{{ isCurrentChapterFinished ? '本章已打卡 ✔' : '✓ 读完打卡本章 (+约 ' + chapterWordCount + ' 字)' }}
+					</button>
+
+					<!-- 便捷翻页导航按钮组（支持跨卷切换） -->
+					<view class="chapter-nav-row">
+						<button class="nav-page-btn prev-btn" @click.stop="goToPreviousChapter">
+							<text class="nav-arrow">‹</text> 上一章
+						</button>
+						<button class="nav-page-btn next-btn" @click.stop="goToNextChapter">
+							下一章 <text class="nav-arrow">›</text>
+						</button>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
+
+		<!-- 25 分钟专注达成弹窗 -->
+		<view v-if="showTimerCompleteModal" class="timer-modal-mask" @click="closeTimerModal">
+			<view class="timer-modal-body" @click.stop>
+				<text class="timer-modal-icon">🎉</text>
+				<text class="timer-modal-title">25 分钟专注达成！</text>
+				<text class="timer-modal-desc">您已完成一个专注番茄钟，今日专注与字数总账已同步累计。</text>
+				<view class="timer-modal-actions">
+					<button class="modal-act-btn outline" @click="backToPlan">查看计划</button>
+					<button class="modal-act-btn primary" @click="closeTimerModal">继续阅读</button>
+				</view>
 			</view>
 		</view>
 
@@ -73,19 +253,28 @@
 				<text class="toolbar-text">更多</text>
 			</view> -->
 		</view>
+		</view>
 	</view>
 </template>
 
 <script>
 // 导入圣经书卷索引，这是我们的"单一数据源"
 import { bibleIndex } from '@/static/bible-data/bible-index.js';
+import { planManager } from '@/common/bible-plan/plan-manager.js';
+import { userTeamManager } from '@/common/bible-plan/user-team-manager.js';
+import { getSectionHeading, isPoetryVerse, parseProperNouns } from '@/common/bible-plan/bible-headings.js';
+import { BIBLE_ASSETS_BASE } from '@/common/config.js';
+import { isAuditMode } from '@/common/audit-guard.js';
 
 export default {
 	data() {
 		return {
+			isAudit: true, // 初始绝对处于审核伪装态
 			bookId: '',    // e.g., 'genesis'
 			chapter: 1,    // e.g., 1
 			verses: [],    // 经文数组
+			paperBlocks: [], // 纸版分段结构化数据块 (小标题、Drop Cap、上标节号、诗歌体)
+			readingMode: 'paper', // 'paper': 微读圣经纸版连续排版; 'verse': 按节列表展示
 
 			// 新增：从索引文件派生出的当前书卷信息
 			currentBookInfo: null,
@@ -93,6 +282,26 @@ export default {
 			// 新增：用于改善用户体验的状态
 			isLoading: false,
 			loadingError: null, // null 表示没有错误
+
+			// 字数统计与计划打卡
+			chapterWordCount: 0,
+			chapterRemainingWords: 0,
+			isCurrentChapterFinished: false,
+			fromPlan: false,
+			todayTargetWords: 5000,
+			todayFinishedWords: 0,
+
+			// 滚动视口控制
+			scrollTop: 0,
+			oldScrollTop: 0,
+			scrollAreaHeight: 600,
+
+			// 25 分钟番茄钟
+			timerSeconds: 1500, // 25 分钟 = 1500 秒
+			timerRunning: false,
+			timerInterval: null,
+			showTimerCompleteModal: false,
+			elapsedSecondsSinceLastSync: 0,
 
 			// 触摸滑动相关
 			touchStartX: 0,
@@ -104,8 +313,11 @@ export default {
 			audioContext: null,
 			isPlaying: false,
 
-			// 状态栏高度
+			// 状态栏与胶囊避让尺寸
 			statusBarHeight: 0,
+			navBarTop: 20,
+			navBarHeight: 32,
+			capsuleWidth: 95,
 
 			// 工具栏显示控制
 			showToolbar: true,
@@ -119,16 +331,83 @@ export default {
 			if (!this.currentBookInfo) return '';
 			// 例如: "创世记 第 1 章"
 			return `${this.currentBookInfo.fullName} 第 ${this.chapter} 章`;
+		},
+
+		currentBookFullName() {
+			return this.currentBookInfo ? this.currentBookInfo.fullName : '';
+		},
+
+		formattedTime() {
+			const m = Math.floor(this.timerSeconds / 60);
+			const s = this.timerSeconds % 60;
+			return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 		}
 	},
 
 	onLoad(options) {
-		// 获取系统信息，设置状态栏高度（px 转 rpx，乘以 2）
+		this.isAudit = isAuditMode();
+		this._lastOptions = options || {};
+
+		// 精确获取系统信息与微信右上角原生胶囊的安全避让尺寸
 		const systemInfo = uni.getSystemInfoSync();
 		this.statusBarHeight = (systemInfo.statusBarHeight || 0) * 2;
+		let navTop = systemInfo.statusBarHeight || 20;
+		let navH = 32;
+		let capW = 95;
+
+		// #ifdef MP-WEIXIN
+		if (uni.getMenuButtonBoundingClientRect) {
+			const menuButton = uni.getMenuButtonBoundingClientRect();
+			if (menuButton && menuButton.top && menuButton.height) {
+				navTop = menuButton.top;
+				navH = menuButton.height;
+				capW = (systemInfo.windowWidth - menuButton.left) + 8;
+			}
+		}
+		// #endif
+
+		this.navBarTop = navTop;
+		this.navBarHeight = navH;
+		this.capsuleWidth = capW;
+
+		if (this.isAudit) {
+			// 审核伪装模式：直接展示风物美文，绝对不发起任何经文网络请求！
+			return;
+		}
 		
-		this.bookId = options.book || 'genesis';
-		this.chapter = parseInt(options.chapter) || 1;
+		this.bookId = (options && options.book) || 'genesis';
+		this.chapter = parseInt(options && options.chapter) || 1;
+		this.fromPlan = (options && (options.fromPlan === 'true' || options.fromPlan === true)) || false;
+		if (!this.fromPlan) {
+			const existingPlan = planManager.getPlanData();
+			if (existingPlan && existingPlan.status && existingPlan.status !== 'PLANNING') {
+				this.fromPlan = true;
+			}
+		}
+
+		// 读取用户阅读排版偏好，默认极佳沉浸感的纸版模式
+		this.readingMode = uni.getStorageSync('bible_reading_mode') || 'paper';
+
+		// 检查是否有未完成的专注计时会话（换经卷/重新进入恢复）
+		const savedSession = planManager.getFocusTimerSession();
+		if (savedSession && savedSession.remainingSeconds > 0 && savedSession.remainingSeconds < 1500) {
+			this.timerSeconds = savedSession.remainingSeconds;
+			this.timerRunning = false;
+			setTimeout(() => {
+				const m = Math.floor(this.timerSeconds / 60);
+				const s = this.timerSeconds % 60;
+				const formatted = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+				uni.showToast({
+					title: `已保持上次专注进度（剩余 ${formatted}），点击可继续计时`,
+					icon: 'none',
+					duration: 2500
+				});
+			}, 800);
+		} else if ((options && options.autoTimer) || this.fromPlan) {
+			if (options && options.autoTimer) {
+				this.startFocusTimer();
+			}
+		}
 
 		// 从导入的 bibleIndex 中查找当前书卷的信息
 		this.currentBookInfo = bibleIndex.find(book => book.bookId === this.bookId);
@@ -143,7 +422,99 @@ export default {
 		this.loadChapter();
 	},
 
+	onShow() {
+		this.isAudit = isAuditMode();
+		if (this.isAudit) return;
+
+		// 校验是否有已保存的番茄钟会话（例如从后台恢复或重新切回）
+		const savedSession = planManager.getFocusTimerSession();
+		if (savedSession && savedSession.remainingSeconds > 0 && savedSession.remainingSeconds < 1500) {
+			if (!this.timerRunning && this.timerSeconds === 1500) {
+				this.timerSeconds = savedSession.remainingSeconds;
+				const m = Math.floor(this.timerSeconds / 60);
+				const s = this.timerSeconds % 60;
+				const formatted = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+				uni.showToast({
+					title: `已保持上次专注进度（剩余 ${formatted}），点击可继续计时`,
+					icon: 'none',
+					duration: 2500
+				});
+			}
+		}
+
+		// 若 onLoad 时处于审核态（未初始化书卷/未拉取章节），切回正常态后需补初始化，否则白屏无字
+		if (!this.currentBookInfo || this.verses.length === 0) {
+			const options = this._lastOptions || {};
+			this.bookId = options.book || this.bookId || 'genesis';
+			this.chapter = parseInt(options.chapter) || this.chapter || 1;
+			this.fromPlan = options.fromPlan === 'true' || options.fromPlan === true || this.fromPlan;
+			if (!this.fromPlan) {
+				const existingPlan = planManager.getPlanData();
+				if (existingPlan && existingPlan.status && existingPlan.status !== 'PLANNING') {
+					this.fromPlan = true;
+				}
+			}
+			this.readingMode = uni.getStorageSync('bible_reading_mode') || this.readingMode || 'paper';
+			this.currentBookInfo = bibleIndex.find(book => book.bookId === this.bookId);
+			if (!this.currentBookInfo) {
+				this.loadingError = '书卷信息加载失败';
+				return;
+			}
+			if (!this.isLoading) {
+				this.loadChapter();
+			}
+		} else {
+			this.updatePlanProgress();
+		}
+	},
+
+	onHide() {
+		if (this.timerRunning) {
+			this.pauseFocusTimer(true);
+		} else if (this.timerSeconds < 1500 && this.timerSeconds > 0) {
+			this.persistCurrentFocusProgress();
+		}
+	},
+
+	mounted() {
+		this.$nextTick(() => {
+			const query = uni.createSelectorQuery().in(this);
+			query.select('.reading-scroll-area').boundingClientRect(data => {
+				if (data && data.height) {
+					this.scrollAreaHeight = data.height;
+				}
+			}).exec();
+		});
+	},
+
 	methods: {
+		// 监听经文内容滚动
+		handleScroll(e) {
+			if (!e || !e.detail) return;
+			const { scrollTop, scrollHeight } = e.detail;
+			this.oldScrollTop = scrollTop;
+
+			// 滚动时隐藏底部浮动工具栏
+			if (this.showToolbar) {
+				this.hideToolbar();
+			}
+
+			// 动态计算本章剩余字数（根据阅读滚动进度从总字数递减）
+			if (!this.isCurrentChapterFinished && this.chapterWordCount > 0 && scrollHeight > 0) {
+				const sysWindowHeight = (uni.getSystemInfoSync && uni.getSystemInfoSync().windowHeight) || 800;
+				const viewHeight = this.scrollAreaHeight || (sysWindowHeight - (this.navBarTop + this.navBarHeight + 90));
+				const maxScroll = Math.max(1, scrollHeight - viewHeight);
+				
+				// 判定接近文末（距底60px或滚过90%）：直接将本章剩余字数归零
+				if (scrollTop >= maxScroll - 60 || (scrollTop / maxScroll) >= 0.90) {
+					this.chapterRemainingWords = 0;
+				} else {
+					const ratio = Math.min(1, Math.max(0, scrollTop / maxScroll));
+					this.chapterRemainingWords = Math.max(0, Math.round(this.chapterWordCount * (1 - ratio)));
+				}
+			}
+		},
+
 		// 返回上一页
 		goBack() {
 			uni.navigateBack();
@@ -166,21 +537,14 @@ export default {
 
 			this.isLoading = true;
 			this.loadingError = null;
-			this.verses = []; // 先清空旧数据
 
-			// 更新导航栏标题
-			uni.setNavigationBarTitle({
-				title: `${this.currentBookInfo.fullName} ${this.chapter}`
-			});
-
-			const volumeSN = this.currentBookInfo.sn;
 			const bookId = this.currentBookInfo.bookId;
-			
+			const volumeSN = this.currentBookInfo.sn;
+
 			try {
-				// 从网络服务器加载章节数据（解决小程序包体积限制问题）
-				const jsonFileName = `volume-${volumeSN}-chapter-${this.chapter}.json`;
-				const dataUrl = `https://ai.ckpeng.site:6688/bak/bible-mp3-cn/bible-data/${jsonFileName}`;
-				
+				const userInfo = uni.getStorageSync('VALLEY_USER_INFO') || uni.getStorageSync('VALLEY_BIBLE_USER_INFO_V1');
+				const openid = userInfo ? userInfo.openid : '';
+				const dataUrl = `${BIBLE_ASSETS_BASE}/bible-data/volume-${volumeSN}-chapter-${this.chapter}.json${openid ? '?openid=' + openid : ''}`;
 				console.log('Loading chapter from:', dataUrl);
 				
 				const data = await new Promise((resolve, reject) => {
@@ -203,12 +567,44 @@ export default {
 					throw new Error(`Invalid chapter data: ${bookId} chapter ${this.chapter}`);
 				}
 
-				// data 就是 JSON 数组
-				this.verses = data.map((item, index) => ({
-					id: index + 1,
-					number: item.verse,
-					text: item.text
-				}));
+				// data 就是 JSON 数组，解析小标题与经文
+				this.verses = data.map((item, index) => {
+					const verseNum = Number(item.verse) || (index + 1);
+					const rawHeading = item.title || item.heading || item.section || '';
+					const dictHeading = getSectionHeading(volumeSN, this.chapter, verseNum);
+					return {
+						id: index + 1,
+						number: verseNum,
+						text: item.text,
+						heading: rawHeading || dictHeading || null
+					};
+				});
+
+				// 生成微读圣经纸版排版结构数据 (小标题、Drop Cap、上标小节号、专名线、诗歌体)
+				this.formatPaperBlocks();
+
+				// 精确统计本章中文字数（过滤掉符号，纯文本字数）
+				this.chapterWordCount = this.verses.reduce((sum, v) => {
+					const clean = (v.text || '').replace(/[^\u4e00-\u9fa50-9a-zA-Z]/g, '');
+					return sum + clean.length;
+				}, 0);
+
+				// 检查本章是否已经在读经计划中打卡
+				this.isCurrentChapterFinished = planManager.isChapterFinished(volumeSN, this.chapter);
+				this.chapterRemainingWords = this.isCurrentChapterFinished ? 0 : this.chapterWordCount;
+				this.updatePlanProgress();
+
+				// 重置滚动位置到顶部并精准测量可滚动区域视口高度
+				this.scrollTop = this.oldScrollTop;
+				this.$nextTick(() => {
+					this.scrollTop = 0;
+					const query = uni.createSelectorQuery().in(this);
+					query.select('.reading-scroll-area').boundingClientRect(data => {
+						if (data && data.height) {
+							this.scrollAreaHeight = data.height;
+						}
+					}).exec();
+				});
 
 			} catch (error) {
 				console.error(`加载章节数据失败: volume-${volumeSN}-chapter-${this.chapter}`, error);
@@ -222,25 +618,81 @@ export default {
 			}
 		},
 
+		// 切换阅读排版模式：纸版 vs 按节
+		setReadingMode(mode) {
+			if (this.readingMode === mode) return;
+			this.readingMode = mode;
+			uni.setStorageSync('bible_reading_mode', mode);
+			uni.showToast({
+				title: mode === 'paper' ? '已切换至纸版显示' : '已切换至按节展示',
+				icon: 'none'
+			});
+		},
+
+		// 结构化解析章节经文为微读圣经纸版排版数据块
+		formatPaperBlocks() {
+			if (!this.verses || this.verses.length === 0) {
+				this.paperBlocks = [];
+				return;
+			}
+
+			const volumeSN = this.currentBookInfo ? this.currentBookInfo.sn : 1;
+			const blocks = [];
+			let currentBlock = null;
+
+			this.verses.forEach((verse) => {
+				const heading = verse.heading || getSectionHeading(volumeSN, this.chapter, verse.number);
+				verse.heading = heading;
+				const isPoetry = isPoetryVerse(volumeSN, this.chapter, verse.number);
+				const tokens = parseProperNouns(verse.text);
+
+				// 同时挂载到 verse 本身，按节展示视图亦可享受专名下划线
+				verse.tokens = tokens;
+
+				const verseObj = {
+					number: verse.number,
+					isPoetry: isPoetry,
+					tokens: tokens,
+					text: verse.text,
+					heading: heading
+				};
+
+				// 判断是否需要开启新的段落块：
+				// 1. 首个块
+				// 2. 遇到小标题
+				// 3. 诗歌体与非诗歌体切换
+				const shouldNewBlock = 
+					!currentBlock || 
+					heading !== null || 
+					currentBlock.isPoetry !== isPoetry;
+
+				if (shouldNewBlock) {
+					currentBlock = {
+						heading: heading,
+						isPoetry: isPoetry,
+						showDropCap: blocks.length === 0 && !isPoetry && verse.number === 1,
+						verses: [verseObj]
+					};
+					blocks.push(currentBlock);
+				} else {
+					currentBlock.verses.push(verseObj);
+				}
+			});
+
+			this.paperBlocks = blocks;
+		},
+
 		// 触摸事件处理 - 优化版
-		handleTouchStart(e) {
-			this.touchStartX = e.touches[0].pageX;
-			this.touchStartY = e.touches[0].pageY;
-			this.touchEndX = e.touches[0].pageX; // 初始化结束位置
-			this.touchEndY = e.touches[0].pageY;
-			
-			// 点击屏幕时切换工具栏显示状态
+		handleTap() {
 			this.toggleToolbar();
 		},
 
-		handleTouchMove(e) {
-			// 实时更新触摸位置
-			this.touchEndX = e.touches[0].pageX;
-			this.touchEndY = e.touches[0].pageY;
-			
-			// 滚动时隐藏工具栏
-			this.hideToolbar();
+		handleTouchStart(e) {
+			this.touchStartX = e.touches[0].pageX;
+			this.touchStartY = e.touches[0].pageY;
 		},
+
+
 
 		handleTouchEnd(e) {
 			// 使用 changedTouches 获取最终位置（更准确）
@@ -278,23 +730,55 @@ export default {
 
 		// 上一章
 		goToPreviousChapter() {
+			if (!this.currentBookInfo) return;
 			if (this.chapter > 1) {
 				this.chapter--;
 				this.loadChapter();
 			} else {
-				uni.showToast({ title: '已经是第一章了', icon: 'none' });
+				// 当前经卷已是第 1 章，尝试跨卷进入上一经卷最后一章
+				const currentSn = Number(this.currentBookInfo.sn);
+				const prevBook = bibleIndex.find(b => b.sn === currentSn - 1);
+				if (prevBook) {
+					this.currentBookInfo = prevBook;
+					this.bookId = prevBook.bookId;
+					this.chapter = prevBook.chapters;
+					this.loadChapter();
+					uni.showToast({
+						title: `已进入《${prevBook.fullName}》第 ${prevBook.chapters} 章`,
+						icon: 'none',
+						duration: 2000
+					});
+				} else {
+					uni.showToast({ title: '已经是全书第一章了（创世记第1章）', icon: 'none' });
+				}
 			}
 		},
 
 		// 下一章
 		goToNextChapter() {
-			// 从 book aInfo 中获取最大章节数
+			if (!this.currentBookInfo) return;
+			// 从 currentBookInfo 中获取最大章节数
 			const maxChapter = this.currentBookInfo.chapters;
 			if (this.chapter < maxChapter) {
 				this.chapter++;
 				this.loadChapter();
 			} else {
-				uni.showToast({ title: '已经是最后一章了', icon: 'none' });
+				// 当前经卷已是最后一章，尝试跨卷进入下一经卷第 1 章
+				const currentSn = Number(this.currentBookInfo.sn);
+				const nextBook = bibleIndex.find(b => b.sn === currentSn + 1);
+				if (nextBook) {
+					this.currentBookInfo = nextBook;
+					this.bookId = nextBook.bookId;
+					this.chapter = 1;
+					this.loadChapter();
+					uni.showToast({
+						title: `已进入《${nextBook.fullName}》第 1 章`,
+						icon: 'none',
+						duration: 2000
+					});
+				} else {
+					uni.showToast({ title: '已经是全书最后一章了（启示录第22章）', icon: 'none' });
+				}
 			}
 		},
 
@@ -302,12 +786,15 @@ export default {
 		getAudioUrl() {
 			if (!this.currentBookInfo) return '';
 			
-			const baseUrl = 'https://ai.ckpeng.site:6688/bak/bible-mp3-cn/汉语和合本-磐石版';
+			const baseUrl = `${BIBLE_ASSETS_BASE}/汉语和合本-磐石版`;
 			const bookName = this.currentBookInfo.fullName; // 例如：创世记
 			const fileName = `${bookName}第${this.chapter}章.mp3`;
 			
+			const userInfo = uni.getStorageSync('VALLEY_USER_INFO') || uni.getStorageSync('VALLEY_BIBLE_USER_INFO_V1');
+			const openid = userInfo ? userInfo.openid : '';
+			
 			// 构建完整 URL：baseUrl/书卷名/文件名
-			return `${baseUrl}/${bookName}/${fileName}`;
+			return `${baseUrl}/${bookName}/${fileName}${openid ? '?openid=' + openid : ''}`;
 		},
 
 		// 切换播放/暂停
@@ -399,14 +886,159 @@ export default {
 			this.toolbarTimer = setTimeout(() => {
 				this.showToolbar = false;
 			}, 10000);
+		},
+
+		// 番茄钟控制
+		toggleFocusTimer() {
+			if (this.timerRunning) {
+				this.pauseFocusTimer(false);
+			} else {
+				this.startFocusTimer();
+			}
+		},
+
+		startFocusTimer() {
+			if (this.timerRunning) return;
+			this.timerRunning = true;
+			if (this.timerInterval) clearInterval(this.timerInterval);
+
+			this.timerInterval = setInterval(() => {
+				if (this.timerSeconds > 0) {
+					this.timerSeconds--;
+					this.elapsedSecondsSinceLastSync = (this.elapsedSecondsSinceLastSync || 0) + 1;
+					// 每满 60 秒平滑同步到每日读经时长，保证即使中断也不丢失进度
+					if (this.elapsedSecondsSinceLastSync >= 60) {
+						planManager.accumulateFocusSeconds(60);
+						this.elapsedSecondsSinceLastSync = 0;
+						planManager.saveFocusTimerSession({
+							remainingSeconds: this.timerSeconds,
+							isRunning: false,
+							lastActiveTime: Date.now()
+						});
+					}
+				} else {
+					this.onTimerFinish();
+				}
+			}, 1000);
+
+			uni.showToast({
+				title: '25分钟专注开始',
+				icon: 'none'
+			});
+		},
+
+		pauseFocusTimer(silent = false) {
+			this.timerRunning = false;
+			if (this.timerInterval) {
+				clearInterval(this.timerInterval);
+				this.timerInterval = null;
+			}
+			this.persistCurrentFocusProgress();
+			if (!silent) {
+				uni.showToast({
+					title: '番茄钟已暂停',
+					icon: 'none'
+				});
+			}
+		},
+
+		persistCurrentFocusProgress() {
+			if (this.elapsedSecondsSinceLastSync > 0) {
+				planManager.accumulateFocusSeconds(this.elapsedSecondsSinceLastSync);
+				this.elapsedSecondsSinceLastSync = 0;
+			}
+			planManager.saveFocusTimerSession({
+				remainingSeconds: this.timerSeconds,
+				isRunning: false,
+				lastActiveTime: Date.now()
+			});
+		},
+
+		onTimerFinish() {
+			this.pauseFocusTimer(true);
+			planManager.clearFocusTimerSession();
+			this.timerSeconds = 1500; // 重置为 25 分钟
+			// 记录 25 分钟专注
+			planManager.recordFocusSession(25);
+
+			// 震动提示
+			uni.vibrateLong();
+			this.showTimerCompleteModal = true;
+		},
+
+		closeTimerModal() {
+			this.showTimerCompleteModal = false;
+		},
+
+		backToPlan() {
+			this.showTimerCompleteModal = false;
+			uni.navigateTo({
+				url: '/pages/bible/plan'
+			});
+		},
+
+		// 打卡本章刷新进度数据
+		updatePlanProgress() {
+			const plan = planManager.getPlanData();
+			if (plan) {
+				if (plan.status && plan.status !== 'PLANNING') {
+					this.fromPlan = true;
+				}
+				this.todayTargetWords = plan.dailyTargetWords || 5000;
+				this.todayFinishedWords = planManager.getTodayFinishedWords();
+			}
+		},
+
+		toggleChapterCheck() {
+			if (!this.currentBookInfo) return;
+			const volumeSN = this.currentBookInfo.sn;
+
+			if (!this.isCurrentChapterFinished) {
+				planManager.markChapterFinished(volumeSN, this.chapter, this.chapterWordCount);
+				this.isCurrentChapterFinished = true;
+				this.chapterRemainingWords = 0;
+
+				// 读完打卡立即累计本次专注时段
+				this.persistCurrentFocusProgress();
+
+				// 同步给所在团队动态流并异步落库云端 MySQL（加异常隔离，绝不影响本地核心字数统计）
+				try {
+					const actDesc = `${this.currentBookFullName} 第 ${this.chapter} 章`;
+					if (userTeamManager && typeof userTeamManager.addActivity === 'function') {
+						userTeamManager.addActivity(actDesc, this.chapterWordCount);
+					}
+				} catch (teamErr) {
+					console.error('[Checkin] 团队动态同步异常:', teamErr);
+				}
+				
+				uni.showToast({ title: '已记录阅读进度 ✔', icon: 'success' });
+			} else {
+				planManager.unmarkChapterFinished(volumeSN, this.chapter, this.chapterWordCount);
+				this.isCurrentChapterFinished = false;
+				this.chapterRemainingWords = this.chapterWordCount;
+				uni.showToast({ title: '已取消打卡', icon: 'none' });
+			}
+			
+			// 立即重新计算并刷新进度数据，向全局广播
+			this.updatePlanProgress();
+			uni.$emit('planProgressUpdated');
 		}
 	},
 
-	// 页面卸载时销毁音频
+	// 页面卸载时销毁音频和计时器
 	onUnload() {
 		if (this.audioContext) {
 			this.audioContext.stop();
 			this.audioContext.destroy();
+		}
+		if (this.timerRunning) {
+			this.pauseFocusTimer(true);
+		} else if (this.timerSeconds < 1500 && this.timerSeconds > 0) {
+			this.persistCurrentFocusProgress();
+		}
+		if (this.timerInterval) {
+			clearInterval(this.timerInterval);
+			this.timerInterval = null;
 		}
 	}
 }
@@ -414,133 +1046,420 @@ export default {
 
 <style scoped>
 .reading-container {
-	min-height: 100vh;
-	background: #f8f8f8;
+	height: 100vh;
+	background: #f2f6f9; /* 微读圣经经典清透纸张底色 */
 	display: flex;
 	flex-direction: column;
+	overflow: hidden;
 }
 
-/* 顶部导航栏 */
+.sticky-header {
+	flex-shrink: 0;
+	background: #f2f6f9;
+	z-index: 100;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+/* 正式阅读模式外层：必须是纵向 flex 容器，否则内部 scroll-view 的 flex:1 失效 */
+.real-reading-view {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.reading-scroll-area {
+	flex: 1;
+	min-height: 0;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+
+/* 顶部导航栏 (微读圣经样式，高度与位置严格与微信胶囊水平居中并避让) */
 .nav-bar {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 20rpx 30rpx;
-	/* padding-top 和 height 通过动态样式设置 */
-	background: #fff;
-	border-bottom: 1rpx solid #e0e0e0;
+	padding-left: 28rpx;
+	background: #f2f6f9;
+	border-bottom: 1rpx solid #e5edf2;
 	box-sizing: border-box;
 }
 
 .nav-left {
 	display: flex;
 	align-items: center;
-	flex: 1;
 }
 
-.back-icon {
-	font-size: 36rpx;
-	color: #333;
-	margin-right: 10rpx;
+.back-arrow-icon {
+	width: 18rpx;
+	height: 18rpx;
+	border-left: 4rpx solid #66757f;
+	border-bottom: 4rpx solid #66757f;
+	transform: rotate(45deg);
+	display: inline-block;
+	margin-right: 14rpx;
+	box-sizing: border-box;
 }
 
-.back-text {
+.nav-book-name {
+	font-size: 34rpx;
+	color: #d96363; /* 珊瑚红书卷名 */
+	font-weight: 600;
+}
+
+.nav-chap-num {
 	font-size: 32rpx;
-	color: #333;
+	color: #e57373;
+	margin-left: 12rpx;
+	font-weight: 500;
 }
 
-.nav-center {
+.nav-right-safe {
+	display: flex;
+	align-items: center;
+	padding-right: 12rpx;
+}
+
+.version-label {
+	font-size: 26rpx;
+	color: #d96363;
+	font-weight: 500;
+}
+
+/* 章节辅助控制栏 (微读切换胶囊 + 番茄钟 + 打卡，严格居中对齐) */
+.chapter-sub-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 14rpx 28rpx;
+	background: #f2f6f9;
+	border-bottom: 1rpx solid #e5edf2;
+	gap: 16rpx;
+}
+
+.plan-progress-bar {
+	display: flex;
+	justify-content: space-around;
+	align-items: center;
+	padding: 10rpx 16rpx;
+	background: #fbf8f2;
+	border-bottom: 1rpx solid #e7ded0;
+}
+
+.progress-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.progress-label {
+	font-size: 20rpx;
+	color: #92847a;
+	margin-bottom: 2rpx;
+}
+
+.progress-value {
+	font-size: 26rpx;
+	font-weight: bold;
+	color: #2c2523;
+}
+
+.progress-unit {
+	font-size: 20rpx;
+	font-weight: normal;
+	color: #92847a;
+	margin-left: 2rpx;
+}
+
+.progress-value.highlight {
+	color: #c58b43;
+}
+
+.progress-value.highlight-today {
+	color: #2e7d32;
+}
+
+.casual-progress-bar {
+	padding: 10rpx 28rpx;
+	background: #fbf8f2;
+	border-bottom: 1rpx solid #e7ded0;
+	text-align: center;
+}
+
+.casual-words {
+	font-size: 22rpx;
+	color: #92847a;
+}
+
+/* 排版切换胶囊 (纸版 vs 分节) */
+.mode-switch-capsule {
+	display: inline-flex;
+	align-items: center;
+	background: #e2ebf2;
+	border-radius: 36rpx;
+	padding: 4rpx;
+	flex-shrink: 0;
+	height: 56rpx;
+	box-sizing: border-box;
+}
+
+.mode-switch-item {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	flex: 2;
-	gap: 20rpx;
+	height: 48rpx;
+	padding: 0 22rpx;
+	border-radius: 24rpx;
+	transition: all 0.2s ease;
+	box-sizing: border-box;
 }
 
-.nav-btn {
-	padding: 12rpx 24rpx;
-	border-radius: 40rpx;
-	font-size: 28rpx;
-	position: relative;
-	border: none;
-	background: none;
+.mode-switch-item.is-active {
+	background: #ffffff;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
 }
 
-.catalog-btn {
-	border: 2rpx solid #ddd;
-	color: #666;
-	background: #fff;
+.mode-switch-text {
+	font-size: 24rpx;
+	color: #667885;
+	font-weight: 500;
+	line-height: 1;
+	display: inline-block;
 }
 
-.version-btn {
-	border: 2rpx solid #ddd;
-	color: #666;
-	background: #fff;
-}
-
-.red-dot {
-	position: absolute;
-	top: 8rpx;
-	right: 8rpx;
-	width: 12rpx;
-	height: 12rpx;
-	background: #ff4444;
-	border-radius: 50%;
-}
-
-.nav-right {
-	flex: 1;
-	display: flex;
-	justify-content: flex-end;
-}
-
-.time-icon {
-	font-size: 32rpx;
-	color: #666;
-}
-
-/* 章节标题 */
-.chapter-header {
-	padding: 40rpx 30rpx 20rpx;
-	background: #f8f8f8;
-}
-
-.chapter-title {
-	font-size: 42rpx;
+.mode-switch-item.is-active .mode-switch-text {
+	color: #1a2228;
 	font-weight: bold;
-	color: #333;
 }
 
-/* 经文内容 */
-.bible-content {
+.sub-center-group {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
 	flex: 1;
-	padding: 20rpx 30rpx;
-	padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
-	background: #f8f8f8;
-	line-height: 1.8;
+	justify-content: center;
+}
+
+/* 番茄钟药丸 */
+.timer-pill {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 52rpx;
+	padding: 0 18rpx;
+	background: #fbf5eb;
+	border: 1rpx solid #eddcc5;
+	border-radius: 26rpx;
+	box-sizing: border-box;
+}
+
+.timer-pill-active {
+	background: #fff0db;
+	border-color: #ffd8a8;
+}
+
+.timer-icon {
+	font-size: 24rpx;
+	margin-right: 6rpx;
+	line-height: 1;
+}
+
+.timer-time {
+	font-size: 24rpx;
+	font-weight: bold;
+	color: #b3732d;
+	font-family: monospace;
+	line-height: 1;
+}
+
+/* 字数标签 */
+.chapter-words-tag {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 52rpx;
+	padding: 0 14rpx;
+	font-size: 22rpx;
+	color: #8c7b6f;
+	background: #ece5d8;
+	border-radius: 12rpx;
+	line-height: 1;
+	white-space: nowrap;
+	box-sizing: border-box;
+}
+
+/* 完成打卡按钮 */
+.chapter-check-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 54rpx;
+	padding: 0 24rpx;
+	background: #c58b43;
+	border-radius: 27rpx;
+	flex-shrink: 0;
+	box-sizing: border-box;
+}
+
+.chapter-check-btn.is-checked {
+	background: #e6fcf5;
+	border: 1rpx solid #b2f2bb;
+}
+
+.check-btn-text {
+	font-size: 24rpx;
+	color: #ffffff;
+	font-weight: bold;
+	line-height: 1;
+	display: inline-block;
+	white-space: nowrap;
+}
+
+.chapter-check-btn.is-checked .check-btn-text {
+	color: #2b8a3e;
+}
+
+/* 经文内容主体 */
+.bible-content {
+	padding: 24rpx 36rpx;
+	padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+	background: #f2f6f9;
+}
+
+/* ==================== 1. 微读圣经纸版排版系统 ==================== */
+.paper-reading-area {
+	padding-top: 10rpx;
+}
+
+.paper-block {
+	margin-bottom: 24rpx;
+}
+
+/* 段落小标题 (微读加粗小标题) */
+.paper-section-title {
+	margin-top: 40rpx;
+	margin-bottom: 24rpx;
+}
+
+.section-title-text {
+	font-size: 34rpx;
+	font-weight: bold;
+	color: #111111;
+	letter-spacing: 1rpx;
+}
+
+/* 正常散文段落 (流式折行 + Drop Cap 大章号) */
+.paper-prose-paragraph {
+	font-size: 33rpx;
+	line-height: 1.95;
+	color: #262626;
+	text-align: justify;
+	text-justify: inter-ideograph;
+	letter-spacing: 0.8rpx;
+	margin-bottom: 26rpx;
+}
+
+/* 超大章号下沉 (Drop Cap 占据首两行) */
+.drop-cap-wrap {
+	float: left;
+	line-height: 0.82;
+	margin-right: 16rpx;
+	margin-top: 6rpx;
+	margin-bottom: 0;
+}
+
+.drop-cap-num {
+	font-size: 82rpx;
+	font-weight: 500;
+	color: #111111;
+	font-family: -apple-system, "SimSun", "Songti SC", serif;
+}
+
+/* 流式行内上标小节号 */
+.sup-verse-num {
+	font-size: 20rpx;
+	vertical-align: super;
+	color: #8c9399;
+	margin-left: 6rpx;
+	margin-right: 4rpx;
+	font-weight: normal;
+	line-height: 1;
+}
+
+/* 经典和合本专名下划线 (人名/地名专名线) */
+.proper-noun {
+	border-bottom: 2rpx solid #262626;
+	padding-bottom: 2rpx;
+}
+
+/* 诗歌体缩进排版 (旧约预言诗引用) */
+.paper-poetry-box {
+	margin: 28rpx 0;
+	padding-left: 48rpx;
+	padding-right: 20rpx;
+}
+
+.poetry-line {
+	display: flex;
+	align-items: flex-start;
+	margin-bottom: 14rpx;
+}
+
+.poetry-verse-num {
+	font-size: 20rpx;
+	vertical-align: super;
+	color: #8c9399;
+	margin-right: 8rpx;
+	margin-top: 4rpx;
+	line-height: 1;
+}
+
+.poetry-text-content {
+	font-size: 32rpx;
+	line-height: 1.85;
+	color: #262626;
+	letter-spacing: 1rpx;
+}
+
+/* ==================== 2. 按节展示逐节排版系统 ==================== */
+.verse-reading-area {
+	padding-top: 10rpx;
+}
+
+.verse-wrapper {
+	margin-bottom: 24rpx;
+}
+
+.verse-mode-title {
+	margin-top: 36rpx;
+	margin-bottom: 20rpx;
 }
 
 .verse-container {
-	margin-bottom: 30rpx;
+	margin-bottom: 20rpx;
 	display: flex;
 	align-items: flex-start;
 }
 
 .verse-number {
-	min-width: 60rpx;
+	min-width: 56rpx;
 	font-size: 24rpx;
-	color: #999;
+	color: #8c9399;
 	font-weight: bold;
-	margin-right: 20rpx;
-	margin-top: 6rpx;
+	margin-right: 18rpx;
+	margin-top: 8rpx;
 	text-align: center;
 }
 
-.verse-text {
+.verse-text-flow {
 	flex: 1;
-	font-size: 32rpx;
-	color: #333;
-	line-height: 1.7;
+	font-size: 34rpx;
+	color: #262626;
+	line-height: 1.85;
+	text-align: justify;
 }
 
 /* 底部工具栏 */
@@ -598,5 +1517,250 @@ export default {
 .feedback-text {
 	font-size: 32rpx;
 	color: #999;
+}
+
+
+
+/* 经文底部读完打卡区域 */
+.reading-finish-section {
+	margin: 60rpx 0 60rpx 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 28rpx;
+}
+
+.finish-chapter-btn {
+	background: linear-gradient(135deg, #c58b43, #a46724);
+	color: #ffffff;
+	border-radius: 40rpx;
+	height: 80rpx;
+	line-height: 80rpx;
+	font-size: 28rpx;
+	font-weight: bold;
+	padding: 0 48rpx;
+	box-shadow: 0 4rpx 12rpx rgba(180, 115, 45, 0.3);
+}
+
+/* 章节便捷翻页导航行 (上一章 / 下一章) */
+.chapter-nav-row {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 36rpx;
+	width: 100%;
+}
+
+.nav-page-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 68rpx;
+	line-height: 68rpx;
+	padding: 0 42rpx;
+	border-radius: 34rpx;
+	font-size: 26rpx;
+	font-weight: 500;
+	background: #e6edf2;
+	color: #4a5c68;
+	border: 1rpx solid #cddce6;
+	transition: all 0.2s ease;
+	box-sizing: border-box;
+}
+
+.nav-page-btn:active {
+	background: #d8e4ec;
+	transform: scale(0.98);
+}
+
+.nav-page-btn::after {
+	border: none;
+}
+
+.nav-arrow {
+	font-size: 32rpx;
+	line-height: 1;
+	margin: 0 6rpx;
+}
+
+.finish-chapter-btn.btn-is-checked {
+	background: #f1f3f5;
+	color: #868e96;
+	box-shadow: none;
+}
+
+.finish-chapter-btn::after {
+	border: none;
+}
+
+/* 25 分钟番茄钟完成弹窗 */
+.timer-modal-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 9999;
+}
+
+.timer-modal-body {
+	background: #ffffff;
+	width: 80%;
+	max-width: 600rpx;
+	border-radius: 24rpx;
+	padding: 48rpx 36rpx;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+}
+
+.timer-modal-icon {
+	font-size: 72rpx;
+	margin-bottom: 16rpx;
+}
+
+.timer-modal-title {
+	font-size: 36rpx;
+	font-weight: bold;
+	color: #2c2523;
+	margin-bottom: 12rpx;
+}
+
+.timer-modal-desc {
+	font-size: 26rpx;
+	color: #7b6d64;
+	line-height: 1.5;
+	margin-bottom: 36rpx;
+}
+
+.timer-modal-actions {
+	display: flex;
+	gap: 20rpx;
+	width: 100%;
+}
+
+.modal-act-btn {
+	flex: 1;
+	height: 76rpx;
+	line-height: 76rpx;
+	border-radius: 38rpx;
+	font-size: 26rpx;
+	font-weight: bold;
+}
+
+.modal-act-btn.outline {
+	background: #f1ede6;
+	color: #7b6d64;
+}
+
+.modal-act-btn.primary {
+	background: #c58b43;
+	color: #ffffff;
+}
+
+.modal-act-btn::after {
+	border: none;
+}
+
+/* 审核伪装：风物美文随笔阅读样式 */
+.audit-article-view {
+	width: 100vw;
+	min-height: 100vh;
+	background-color: #f7f6f2;
+	display: flex;
+	flex-direction: column;
+}
+
+.audit-article-scroll {
+	flex: 1;
+	height: calc(100vh - 120rpx);
+	padding-bottom: 80rpx;
+}
+
+.article-banner-img {
+	width: 100%;
+	height: 420rpx;
+	display: block;
+}
+
+.article-body-card {
+	margin: -40rpx 32rpx 40rpx 32rpx;
+	position: relative;
+	z-index: 2;
+	background: #ffffff;
+	border-radius: 28rpx;
+	padding: 44rpx 36rpx;
+	box-shadow: 0 12rpx 36rpx rgba(0, 0, 0, 0.06);
+	display: flex;
+	flex-direction: column;
+}
+
+.article-h1 {
+	font-size: 40rpx;
+	font-weight: bold;
+	color: #2c2523;
+	line-height: 1.4;
+	margin-bottom: 20rpx;
+}
+
+.article-meta-row {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+	padding-bottom: 24rpx;
+	margin-bottom: 32rpx;
+	border-bottom: 1rpx solid #f0ede6;
+}
+
+.article-author {
+	font-size: 24rpx;
+	color: #c58b43;
+	font-weight: 600;
+	background: rgba(197, 139, 67, 0.1);
+	padding: 4rpx 16rpx;
+	border-radius: 8rpx;
+}
+
+.article-time {
+	font-size: 24rpx;
+	color: #9c9289;
+}
+
+.article-content-text {
+	display: flex;
+	flex-direction: column;
+	gap: 28rpx;
+	margin-bottom: 48rpx;
+}
+
+.article-content-text .p-text {
+	font-size: 32rpx;
+	color: #4a4039;
+	line-height: 1.85;
+	text-align: justify;
+	letter-spacing: 1rpx;
+}
+
+.return-home-btn {
+	width: 100%;
+	height: 88rpx;
+	line-height: 88rpx;
+	background: linear-gradient(135deg, #44634f, #2c4436);
+	color: #ffffff;
+	font-size: 30rpx;
+	font-weight: 600;
+	border-radius: 44rpx;
+	text-align: center;
+	border: none;
+	box-shadow: 0 8rpx 20rpx rgba(44, 68, 54, 0.25);
+}
+
+.return-home-btn::after {
+	border: none;
 }
 </style>

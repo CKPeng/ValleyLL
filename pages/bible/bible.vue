@@ -1,17 +1,62 @@
 <template>
 	<view class="bible-container">
-		<!-- 顶部导航栏 -->
-		<view class="nav-bar">
-			<view class="nav-left" @click="goBack">
-				<text class="back-icon">‹</text>
-				<text class="back-text">返回</text>
+		<!-- 模式一：审核伪装模式【百城漫游 · 目的地画廊】 -->
+		<view v-if="isAudit" class="audit-scenery-view">
+			<!-- 顶部导航栏 -->
+			<view class="nav-bar">
+				<view class="nav-left" @click="goBack">
+					<view class="back-arrow-icon"></view>
+					<text class="back-text">返回</text>
+				</view>
+				<view class="nav-center">
+					<text class="nav-title">城市漫游画廊</text>
+					<text class="nav-subtitle">精选风物 · 摄影志</text>
+				</view>
+				<view class="nav-right"></view>
 			</view>
-			<view class="nav-center">
-				<text class="nav-title">{{ currentBookName || '圣经' }}</text>
-				<text class="nav-subtitle">和合本 ▼</text>
-			</view>
-			<view class="nav-right"></view>
+
+			<scroll-view scroll-y class="scenery-gallery-scroll">
+				<view class="scenery-gallery-header">
+					<text class="gallery-lead-title">探索华夏名城</text>
+					<text class="gallery-lead-sub">精选 6 大文旅胜地风光画报与自然之声</text>
+				</view>
+				<view class="gallery-grid">
+					<view 
+						v-for="(city, idx) in auditCities" 
+						:key="idx" 
+						class="city-card"
+						@click="selectAuditCity(idx)"
+					>
+						<image class="city-thumb" :src="city.image" mode="aspectFill"></image>
+						<view class="city-card-info">
+							<text class="city-name-txt">{{ city.city }}</text>
+							<text class="city-title-txt">{{ city.title }}</text>
+							<text class="city-sound-tag">🎵 {{ city.sound }}</text>
+						</view>
+					</view>
+				</view>
+			</scroll-view>
 		</view>
+
+		<!-- 模式二：正式开放模式【圣经目录】 -->
+		<view v-else class="real-bible-view">
+			<!-- 顶部导航栏 -->
+			<view class="nav-bar">
+				<view class="nav-left" @click="goBack">
+					<view class="back-arrow-icon"></view>
+					<text class="back-text">返回</text>
+				</view>
+				<view class="nav-center">
+					<text class="nav-title">{{ currentBookName || '圣经' }}</text>
+					<text class="nav-subtitle">和合本 ▼</text>
+				</view>
+				<view class="nav-right" @click="goToPlan">
+					<view class="plan-entry-btn">
+						<text class="plan-entry-icon">📅</text>
+						<text class="plan-entry-text">计划</text>
+					</view>
+				</view>
+			</view>
 		
 		<!-- 标签页 -->
 		<view class="tab-bar">
@@ -108,17 +153,30 @@
 			</view>
 			
 		</view>
+		</view>
 	</view>
 </template>
 
 <script>
+import { isAuditMode } from '@/common/audit-guard.js';
+
 export default {
 	data() {
 		return {
+			isAudit: true, // 初始绝对处于审核伪装模式
+			auditCities: [
+				{ city: '江苏 · 苏州', title: '平江水弄烟雨', image: '/static/scenery/suzhou.jpg', sound: '溪涧幽泉' },
+				{ city: '广西 · 桂林', title: '漓江水墨晚舟', image: '/static/scenery/guilin.jpg', sound: '烟雨晚风' },
+				{ city: '云南 · 大理', title: '苍山雪霁洱海', image: '/static/scenery/dali.jpg', sound: '苍山清风' },
+				{ city: '浙江 · 杭州', title: '西子晴光断桥', image: '/static/scenery/hangzhou.jpg', sound: '幽篁雨露' },
+				{ city: '四川 · 成都', title: '青城修竹叠翠', image: '/static/scenery/chengdu.jpg', sound: '深谷鸟鸣' },
+				{ city: '福建 · 厦门', title: '琴岛海韵听涛', image: '/static/scenery/xiamen.jpg', sound: '潮平海浪' }
+			],
 			currentTab: 'book',
 			selectedBook: null,
 			selectedChapter: null,
 			showVerseIndex: false,
+			selectForPlan: null,
 			// 旧约书卷
 			oldTestamentBooks: [
 				{ id: 'genesis', short: '创', name: '创世记', chapters: 50 },
@@ -200,7 +258,36 @@ export default {
 			return book ? book.name : '';
 		}
 	},
+
+	onLoad() {
+		this.isAudit = isAuditMode();
+	},
+
+	onShow() {
+		this.isAudit = isAuditMode();
+		if (this.isAudit) return;
+		const trackType = uni.getStorageSync('temp_select_for_plan');
+		if (trackType) {
+			this.selectForPlan = trackType;
+			// 清除标志，防止污染下次正常进入
+			uni.removeStorageSync('temp_select_for_plan');
+		}
+	},
+	
 	methods: {
+		// 审核模式下点击城市卡片漫游
+		selectAuditCity(idx) {
+			uni.reLaunch({
+				url: '/pages/index/index'
+			});
+		},
+		// 跳转到读经计划
+		goToPlan() {
+			uni.navigateTo({
+				url: '/pages/bible/plan'
+			});
+		},
+
 		// 返回上一页
 		goBack() {
 			uni.navigateBack();
@@ -223,11 +310,27 @@ export default {
 			// 选择书卷后自动切换到章节标签页
 			this.currentTab = 'chapter';
 		},
-		
+
 		// 选择章节
 		selectChapter(chapter) {
 			this.selectedChapter = chapter;
-			// 跳转到阅读页面
+			
+			if (this.selectForPlan) {
+				// 发送事件给 plan.vue，让它在后台默默更新指针
+				uni.$emit('planTrackUpdated', {
+					track: this.selectForPlan,
+					bookId: this.selectedBook,
+					chapter: chapter
+				});
+				// 直接跳转到阅读页，并带上 fromPlan=true！
+				// 这样用户选完章节就能直接开始读，且算作计划打卡
+				uni.redirectTo({
+					url: `/pages/bible/reading?book=${this.selectedBook}&chapter=${chapter}&fromPlan=true`
+				});
+				return;
+			}
+			
+			// 自由阅读
 			uni.navigateTo({
 				url: `/pages/bible/reading?book=${this.selectedBook}&chapter=${chapter}`
 			});
@@ -308,15 +411,21 @@ export default {
 	flex: 1;
 }
 
-.back-icon {
-	font-size: 36rpx;
-	color: #333;
-	margin-right: 10rpx;
+.back-arrow-icon {
+	width: 18rpx;
+	height: 18rpx;
+	border-left: 4rpx solid #333;
+	border-bottom: 4rpx solid #333;
+	transform: rotate(45deg);
+	display: inline-block;
+	margin-right: 12rpx;
+	box-sizing: border-box;
 }
 
 .back-text {
-	font-size: 32rpx;
+	font-size: 30rpx;
 	color: #333;
+	line-height: 1;
 }
 
 .nav-center {
@@ -339,6 +448,29 @@ export default {
 
 .nav-right {
 	flex: 1;
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+}
+
+.plan-entry-btn {
+	display: flex;
+	align-items: center;
+	background: #fff4e6;
+	border: 1rpx solid #ffd8a8;
+	padding: 8rpx 18rpx;
+	border-radius: 30rpx;
+}
+
+.plan-entry-icon {
+	font-size: 24rpx;
+	margin-right: 6rpx;
+}
+
+.plan-entry-text {
+	font-size: 24rpx;
+	color: #d9480f;
+	font-weight: bold;
 }
 
 /* 标签页 */
@@ -519,4 +651,72 @@ export default {
 	color: #333;
 }
 
+/* 审核伪装画廊样式 */
+.audit-scenery-view {
+	width: 100vw;
+	height: 100vh;
+	background: #f7f8fa;
+	display: flex;
+	flex-direction: column;
+}
+.scenery-gallery-scroll {
+	flex: 1;
+	padding: 24rpx 30rpx;
+	box-sizing: border-box;
+}
+.scenery-gallery-header {
+	margin-bottom: 24rpx;
+}
+.gallery-lead-title {
+	font-size: 34rpx;
+	font-weight: bold;
+	color: #2c3e50;
+	display: block;
+	margin-bottom: 8rpx;
+}
+.gallery-lead-sub {
+	font-size: 24rpx;
+	color: #7f8c8d;
+	display: block;
+}
+.gallery-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 20rpx;
+	padding-bottom: 60rpx;
+}
+.city-card {
+	background: #ffffff;
+	border-radius: 16rpx;
+	overflow: hidden;
+	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+	display: flex;
+	flex-direction: column;
+}
+.city-thumb {
+	width: 100%;
+	height: 200rpx;
+	background: #eaeaea;
+}
+.city-card-info {
+	padding: 16rpx 18rpx;
+	display: flex;
+	flex-direction: column;
+	gap: 6rpx;
+}
+.city-name-txt {
+	font-size: 22rpx;
+	font-weight: 600;
+	color: #e67e22;
+}
+.city-title-txt {
+	font-size: 26rpx;
+	font-weight: bold;
+	color: #2c3e50;
+}
+.city-sound-tag {
+	font-size: 20rpx;
+	color: #16a085;
+	margin-top: 4rpx;
+}
 </style>

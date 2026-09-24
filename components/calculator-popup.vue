@@ -5,9 +5,9 @@
 				<text class="display-text">{{displayText}}</text>
 			</view>
 			<view class="calculator-buttons">
-				<!-- 第一行 - 合并的附录按钮 -->
+				<!-- 第一行 - 合并的附录/随机漫游按钮 -->
 				<view class="button-row">
-					<button class="calc-button orange-button wide-button" @click="appendixAction">附录</button>
+					<button class="calc-button orange-button wide-button" @click="appendixAction">{{ isRandomMode ? '随机漫游' : '附录' }}</button>
 					<button class="calc-button orange-button" @click="deleteLast">⌫</button>
 				</view>
 				<!-- 第二行 -->
@@ -56,7 +56,7 @@ export default {
 	computed: {
 		displayText() {
 			if (this.displayValue === '0') {
-				return this.isRandomMode ? '随机风景' : '请选择诗歌';
+				return this.isRandomMode ? '漫游城市 (输入1-6或随机)' : '请选择诗歌';
 			}
 			return this.displayValue;
 		}
@@ -110,8 +110,15 @@ export default {
 				this.displayValue = '0';
 			}
 		},
-		// 附录按钮功能
+		// 附录/随机漫游按钮功能
 		appendixAction() {
+			if (this.isRandomMode) {
+				const randomCity = Math.floor(Math.random() * 6) + 1;
+				this.displayValue = String(randomCity);
+				this.$emit('confirmClicked', { value: String(randomCity) });
+				this.close();
+				return;
+			}
 			console.log('附录按钮被点击，当前输入值:', this.displayValue);
 			// 显示"附"字
 			this.displayValue = '附';

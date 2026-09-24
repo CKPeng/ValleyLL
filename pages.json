@@ -10,7 +10,7 @@
 		{
 			"path": "pages/bible/bible",
 			"style": {
-				"navigationBarTitleText": "阅读圣经",
+				"navigationBarTitleText": "",
 				"navigationBarBackgroundColor": "#f5f5dc",
 				"navigationBarTextStyle": "black"
 			}
@@ -21,11 +21,25 @@
 				"navigationBarTitleText": "",
 				"navigationStyle": "custom"
 			}
+		},
+		{
+			"path": "pages/bible/plan",
+			"style": {
+				"navigationBarTitleText": "",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/bible/team",
+			"style": {
+				"navigationBarTitleText": "",
+				"navigationStyle": "custom"
+			}
 		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-app",
+		"navigationBarTitleText": "",
 		"navigationBarBackgroundColor": "#F8F8F8",
 		"backgroundColor": "#F8F8F8"
 	},
