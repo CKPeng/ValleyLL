@@ -76,6 +76,51 @@ function getMonday(d) {
   return date;
 }
 
+// 挑选进度更靠前的书卷/章节指针（防止空白新设备重置老设备阅读进度）
+function pickFurtherTrack(localTrack, cloudTrack) {
+  if (!localTrack && !cloudTrack) return { sn: 1, bookId: 'genesis', chapter: 1 };
+  if (!localTrack) return cloudTrack;
+  if (!cloudTrack) return localTrack;
+
+  const isLocalInitial = (Number(localTrack.sn) === 1 || !localTrack.sn) && (Number(localTrack.chapter) === 1 || !localTrack.chapter);
+  const isCloudInitial = (Number(cloudTrack.sn) === 1 || !cloudTrack.sn) && (Number(cloudTrack.chapter) === 1 || !cloudTrack.chapter);
+
+  if (isLocalInitial && !isCloudInitial) return cloudTrack;
+  if (isCloudInitial && !isLocalInitial) return localTrack;
+
+  const localSn = Number(localTrack.sn) || 1;
+  const cloudSn = Number(cloudTrack.sn) || 1;
+  if (localSn > cloudSn) return localTrack;
+  if (cloudSn > localSn) return cloudTrack;
+
+  const localChap = Number(localTrack.chapter) || 1;
+  const cloudChap = Number(cloudTrack.chapter) || 1;
+  if (localChap > cloudChap) return localTrack;
+  return cloudTrack;
+}
+
+function pickFurtherSubTrack(localTrack, cloudTrack) {
+  if (!localTrack && !cloudTrack) return { sn: 40, bookId: 'matthew', chapter: 1 };
+  if (!localTrack) return cloudTrack;
+  if (!cloudTrack) return localTrack;
+
+  const isLocalInitial = (Number(localTrack.sn) === 40 || !localTrack.sn) && (Number(localTrack.chapter) === 1 || !localTrack.chapter);
+  const isCloudInitial = (Number(cloudTrack.sn) === 40 || !cloudTrack.sn) && (Number(cloudTrack.chapter) === 1 || !cloudTrack.chapter);
+
+  if (isLocalInitial && !isCloudInitial) return cloudTrack;
+  if (isCloudInitial && !isLocalInitial) return localTrack;
+
+  const localSn = Number(localTrack.sn) || 40;
+  const cloudSn = Number(cloudTrack.sn) || 40;
+  if (localSn > cloudSn) return localTrack;
+  if (cloudSn > localSn) return cloudTrack;
+
+  const localChap = Number(localTrack.chapter) || 1;
+  const cloudChap = Number(cloudTrack.chapter) || 1;
+  if (localChap > cloudChap) return localTrack;
+  return cloudTrack;
+}
+
 class BiblePlanManager {
   constructor() {
     this.plan = null;
@@ -201,51 +246,6 @@ class BiblePlanManager {
       this.syncToCloud();
     }, 2000); // 2秒防抖
   }
-
-// 挑选进度更靠前的书卷/章节指针（防止空白新设备重置老设备阅读进度）
-function pickFurtherTrack(localTrack, cloudTrack) {
-  if (!localTrack && !cloudTrack) return { sn: 1, bookId: 'genesis', chapter: 1 };
-  if (!localTrack) return cloudTrack;
-  if (!cloudTrack) return localTrack;
-
-  const isLocalInitial = (Number(localTrack.sn) === 1 || !localTrack.sn) && (Number(localTrack.chapter) === 1 || !localTrack.chapter);
-  const isCloudInitial = (Number(cloudTrack.sn) === 1 || !cloudTrack.sn) && (Number(cloudTrack.chapter) === 1 || !cloudTrack.chapter);
-
-  if (isLocalInitial && !isCloudInitial) return cloudTrack;
-  if (isCloudInitial && !isLocalInitial) return localTrack;
-
-  const localSn = Number(localTrack.sn) || 1;
-  const cloudSn = Number(cloudTrack.sn) || 1;
-  if (localSn > cloudSn) return localTrack;
-  if (cloudSn > localSn) return cloudTrack;
-
-  const localChap = Number(localTrack.chapter) || 1;
-  const cloudChap = Number(cloudTrack.chapter) || 1;
-  if (localChap > cloudChap) return localTrack;
-  return cloudTrack;
-}
-
-function pickFurtherSubTrack(localTrack, cloudTrack) {
-  if (!localTrack && !cloudTrack) return { sn: 40, bookId: 'matthew', chapter: 1 };
-  if (!localTrack) return cloudTrack;
-  if (!cloudTrack) return localTrack;
-
-  const isLocalInitial = (Number(localTrack.sn) === 40 || !localTrack.sn) && (Number(localTrack.chapter) === 1 || !localTrack.chapter);
-  const isCloudInitial = (Number(cloudTrack.sn) === 40 || !cloudTrack.sn) && (Number(cloudTrack.chapter) === 1 || !cloudTrack.chapter);
-
-  if (isLocalInitial && !isCloudInitial) return cloudTrack;
-  if (isCloudInitial && !isLocalInitial) return localTrack;
-
-  const localSn = Number(localTrack.sn) || 40;
-  const cloudSn = Number(cloudTrack.sn) || 40;
-  if (localSn > cloudSn) return localTrack;
-  if (cloudSn > localSn) return cloudTrack;
-
-  const localChap = Number(localTrack.chapter) || 1;
-  const cloudChap = Number(cloudTrack.chapter) || 1;
-  if (localChap > cloudChap) return localTrack;
-  return cloudTrack;
-}
 
   // 智能并集合并两个读经计划，保证老用户数据“只增不减、绝对不丢失”
   mergePlans(localPlan, cloudPlan) {
