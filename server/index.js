@@ -531,6 +531,135 @@ bibleRouter.get('/my-stats', async (req, res) => {
     }
 });
 
+// 全书经文全局全文检索接口
+let bibleVersesCache = null;
+let bibleBooksMap = null;
+try {
+    const bibleBooksList = require('./bible-index.json');
+    bibleBooksMap = new Map(bibleBooksList.map(b => [b.sn, b]));
+} catch (e) {
+    console.warn('[BibleSearch] 加载 server/bible-index.json 警告:', e.message);
+    bibleBooksMap = new Map();
+}
+
+function getBibleVersesCache() {
+    if (bibleVersesCache) return bibleVersesCache;
+
+    const dataDir = process.env.STATIC_BAK_PATH
+        ? path.join(process.env.STATIC_BAK_PATH, 'bible-mp3-cn/bible-data')
+        : path.join(__dirname, '../bak/bible-mp3-cn/bible-data');
+
+    if (!fs.existsSync(dataDir)) {
+        console.warn('[BibleSearch] 经文数据目录不存在:', dataDir);
+        return [];
+    }
+
+    try {
+        const files = fs.readdirSync(dataDir);
+        const verses = [];
+        for (const file of files) {
+            const match = file.match(/^volume-(\d+)-chapter-(\d+)\.json$/);
+            if (!match) continue;
+            const sn = parseInt(match[1], 10);
+            const ch = parseInt(match[2], 10);
+            const book = bibleBooksMap.get(sn) || {
+                sn,
+                bookId: `book_${sn}`,
+                fullName: `第${sn}卷`,
+                kindSN: 1,
+                newOrOld: sn <= 39 ? 0 : 1
+            };
+
+            const content = fs.readFileSync(path.join(dataDir, file), 'utf8');
+            const list = JSON.parse(content);
+            if (Array.isArray(list)) {
+                for (let i = 0; i < list.length; i++) {
+                    const item = list[i];
+                    if (item && item.text) {
+                        verses.push({
+                            sn,
+                            bookId: book.bookId,
+                            bookName: book.fullName,
+                            kindSN: book.kindSN,
+                            newOrOld: book.newOrOld,
+                            chapter: ch,
+                            verse: parseInt(item.verse, 10) || (i + 1),
+                            text: item.text
+                        });
+                    }
+                }
+            }
+        }
+        verses.sort((a, b) => {
+            if (a.sn !== b.sn) return a.sn - b.sn;
+            if (a.chapter !== b.chapter) return a.chapter - b.chapter;
+            return a.verse - b.verse;
+        });
+        bibleVersesCache = verses;
+        console.log(`[BibleSearch] 已初始化经文全局内存索引，共 ${verses.length} 节经文`);
+    } catch (e) {
+        console.error('[BibleSearch] 初始化经文内存索引失败:', e);
+    }
+    return bibleVersesCache || [];
+}
+
+bibleRouter.get('/search', bibleAuditCutoff, async (req, res) => {
+    const keyword = (req.query.keyword || '').trim();
+    const scope = (req.query.scope || 'all').trim();
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+
+    if (!keyword) {
+        return ok(res, { list: [], total: 0, page, limit });
+    }
+
+    try {
+        const allVerses = getBibleVersesCache();
+        const kwLower = keyword.toLowerCase();
+
+        const matched = [];
+        for (let i = 0; i < allVerses.length; i++) {
+            const v = allVerses[i];
+
+            // 范围筛选
+            if (scope === 'old' && v.newOrOld !== 0) continue;
+            if (scope === 'new' && v.newOrOld !== 1) continue;
+            if (scope === 'law' && v.kindSN !== 1) continue;
+            if (scope === 'history' && v.kindSN !== 2) continue;
+            if (scope === 'poetry' && v.kindSN !== 3) continue;
+            if (scope === 'prophets' && v.kindSN !== 4 && v.kindSN !== 5) continue;
+            if (scope === 'gospels' && (v.sn < 40 || v.sn > 43)) continue;
+            if (scope === 'epistles' && (v.sn < 45 || v.sn > 65)) continue;
+
+            // 关键词匹配
+            if (v.text && v.text.toLowerCase().includes(kwLower)) {
+                matched.push({
+                    sn: v.sn,
+                    bookId: v.bookId,
+                    bookName: v.bookName,
+                    chapter: v.chapter,
+                    verse: v.verse,
+                    text: v.text
+                });
+            }
+        }
+
+        const total = matched.length;
+        const startIndex = (page - 1) * limit;
+        const list = matched.slice(startIndex, startIndex + limit);
+
+        return ok(res, {
+            total,
+            list,
+            page,
+            limit
+        });
+    } catch (e) {
+        console.error('[BibleSearch] 检索发生异常:', e);
+        return fail(res, e.message);
+    }
+});
+
 // ==========================================
 // 3. 用户数据与云端计划同步 (不受审核期门禁限制)
 // ==========================================
