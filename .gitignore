@@ -14,3 +14,4 @@ server/script*.js
 # 备份与导出文件
 *.recovered
 *_dump.txt
+.agy-backup/
