@@ -2,8 +2,11 @@
 	<view class="search-page-container">
 		<!-- 顶部安全区域与搜索栏 -->
 		<view class="search-header-fixed" :style="{ paddingTop: statusBarHeight + 'px' }">
-			<view class="search-input-row">
-				<view class="search-box-wrap">
+			<view class="search-input-row" :style="{ paddingRight: capsulePaddingRight + 'px' }">
+			    <view class="back-btn" @click="goBack">
+			        <view class="back-arrow-icon"></view>
+			    </view>
+			    <view class="search-box-wrap">
 					<text class="search-prefix-icon">🔍</text>
 					<input 
 						class="search-main-input" 
@@ -151,7 +154,8 @@ export default {
 			],
 			historyList: [],
 			results: [],
-			totalCount: 0
+			totalCount: 0,
+			capsulePaddingRight: 14
 		};
 	},
 
@@ -160,6 +164,18 @@ export default {
 		this.statusBarHeight = sysInfo.statusBarHeight || 20;
 		// 动态计算顶部总固定高度
 		this.headerTotalHeight = this.statusBarHeight + 50 + 44;
+
+		// 获取微信胶囊位置并计算避让安全内边距
+		let capPadding = 14;
+		// #ifdef MP-WEIXIN
+		if (uni.getMenuButtonBoundingClientRect) {
+			const menuButton = uni.getMenuButtonBoundingClientRect();
+			if (menuButton && menuButton.left) {
+				capPadding = (sysInfo.windowWidth - menuButton.left) + 8;
+			}
+		}
+		// #endif
+		this.capsulePaddingRight = capPadding;
 
 		// 加载本地搜索历史
 		this.loadSearchHistory();
@@ -173,7 +189,15 @@ export default {
 
 	methods: {
 		goBack() {
-			uni.navigateBack();
+			const pages = getCurrentPages();
+			if (pages.length > 1) {
+				uni.navigateBack();
+			} else {
+				// 如果没有历史页面（如通过分享链接进入），直接跳转回首页
+				uni.reLaunch({
+					url: '/pages/index/index'
+				});
+			}
 		},
 
 		clearKeyword() {
@@ -487,6 +511,28 @@ export default {
 	align-items: center;
 	gap: 36rpx;
 }
+
+.back-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 56rpx;
+	height: 72rpx;
+	margin-left: -8rpx;
+	flex-shrink: 0;
+	cursor: pointer;
+}
+
+.back-arrow-icon {
+	width: 20rpx;
+	height: 20rpx;
+	border-left: 4rpx solid #333333;
+	border-bottom: 4rpx solid #333333;
+	transform: rotate(45deg);
+	display: inline-block;
+	box-sizing: border-box;
+}
+
 
 .scope-tab-item {
 	position: relative;
