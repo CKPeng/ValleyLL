@@ -108,6 +108,29 @@
 			<view class="casual-progress-bar" v-else-if="!fromPlan && verses.length > 0">
 				<text class="casual-words">本章约 {{ chapterWordCount }} 字 · 剩余约 {{ isCurrentChapterFinished ? 0 : chapterRemainingWords }} 字</text>
 			</view>
+
+			<!-- 章节内关键词搜索浮动栏 -->
+			<view v-if="searchActive" class="search-floating-bar">
+				<view class="search-input-wrap">
+					<text class="search-icon">🔍</text>
+					<input 
+						class="search-input" 
+						type="text" 
+						v-model="searchKeyword" 
+						placeholder="搜索本章关键词..." 
+						confirm-type="search"
+						@input="onSearchInput"
+						@confirm="goToNextMatch"
+					/>
+					<text v-if="searchKeyword" class="search-clear-btn" @click.stop="clearSearch">✕</text>
+				</view>
+				<view class="search-actions">
+					<text class="search-counter">{{ searchResults.length > 0 ? (currentSearchIndex + 1) + '/' + searchResults.length : (searchKeyword ? '0 处' : '') }}</text>
+					<button class="search-nav-btn" :disabled="searchResults.length <= 1" @click.stop="goToPrevMatch">‹</button>
+					<button class="search-nav-btn" :disabled="searchResults.length <= 1" @click.stop="goToNextMatch">›</button>
+					<text class="search-close-text" @click.stop="closeSearch">完成</text>
+				</view>
+			</view>
 		</view>
 
 		<!-- 加载中提示 -->
@@ -126,6 +149,8 @@
 			scroll-y 
 			class="reading-scroll-area"
 			:scroll-top="scrollTop"
+			:scroll-into-view="targetVerseAnchor"
+			scroll-with-animation
 			@scroll="handleScroll">
 			
 			<view class="bible-content"
@@ -144,13 +169,28 @@
 
 						<!-- 诗歌体缩进段落 -->
 						<view v-if="block.isPoetry" class="paper-poetry-box">
-							<view v-for="verse in block.verses" :key="verse.number" class="poetry-line">
+							<view 
+								v-for="verse in block.verses" 
+								:key="verse.number" 
+								:id="'v_' + verse.number" 
+								class="poetry-line"
+								:class="{ 'verse-active-matched': currentMatchVerseNum === verse.number }"
+								@longpress="copyVerse(verse)">
 								<text class="poetry-verse-num">{{ verse.number }}</text>
 								<view class="poetry-text-content">
-									<text 
-										v-for="(tok, tIdx) in verse.tokens" 
-										:key="tIdx" 
-										:class="{ 'proper-noun': tok.isNoun }">{{ tok.text }}</text>
+									<block v-for="(tok, tIdx) in verse.tokens" :key="tIdx">
+										<template v-if="searchActive && searchKeyword">
+											<text 
+												v-for="(part, pIdx) in getHighlightedParts(tok.text)" 
+												:key="pIdx" 
+												:class="{ 
+													'proper-noun': tok.isNoun,
+													'search-highlight': part.highlight,
+													'search-active-target': part.highlight && currentMatchVerseNum === verse.number
+												}">{{ part.text }}</text>
+										</template>
+										<text v-else :class="{ 'proper-noun': tok.isNoun }">{{ tok.text }}</text>
+									</block>
 								</view>
 							</view>
 						</view>
@@ -164,12 +204,27 @@
 
 							<!-- 流式经文行内排版与嵌入式上标小节号 -->
 							<block v-for="verse in block.verses" :key="verse.number">
-								<text v-if="verse.number > 1" class="sup-verse-num">{{ verse.number }}</text>
-								<text 
-									v-for="(tok, tIdx) in verse.tokens" 
-									:key="tIdx" 
-									:class="{ 'proper-noun': tok.isNoun }"
-									class="flow-text-span">{{ tok.text }}</text>
+								<text :id="'v_' + verse.number" class="verse-anchor"></text>
+								<text v-if="verse.number > 1" class="sup-verse-num" :class="{ 'sup-active-matched': currentMatchVerseNum === verse.number }">{{ verse.number }}</text>
+								<block v-for="(tok, tIdx) in verse.tokens" :key="tIdx">
+									<template v-if="searchActive && searchKeyword">
+										<text 
+											v-for="(part, pIdx) in getHighlightedParts(tok.text)" 
+											:key="pIdx" 
+											:class="{ 
+												'proper-noun': tok.isNoun,
+												'search-highlight': part.highlight,
+												'search-active-target': part.highlight && currentMatchVerseNum === verse.number
+											}"
+											class="flow-text-span"
+											@longpress="copyVerse(verse)">{{ part.text }}</text>
+									</template>
+									<text 
+										v-else
+										:class="{ 'proper-noun': tok.isNoun }" 
+										class="flow-text-span"
+										@longpress="copyVerse(verse)">{{ tok.text }}</text>
+								</block>
 							</block>
 						</view>
 					</view>
@@ -177,7 +232,13 @@
 
 				<!-- 模式二：按节展示视图 (整齐逐节排版) -->
 				<view v-else class="verse-reading-area">
-					<view v-for="verse in verses" :key="verse.id" class="verse-wrapper">
+					<view 
+						v-for="verse in verses" 
+						:key="verse.id" 
+						:id="'v_' + verse.number" 
+						class="verse-wrapper"
+						:class="{ 'verse-active-matched': currentMatchVerseNum === verse.number }"
+						@longpress="copyVerse(verse)">
 						<!-- 分节模式段落小标题 -->
 						<view v-if="verse.heading" class="paper-section-title verse-mode-title">
 							<text class="section-title-text">{{ verse.heading }}</text>
@@ -185,10 +246,19 @@
 						<view class="verse-container">
 							<text class="verse-number">{{ verse.number }}</text>
 							<view class="verse-text-flow">
-								<text 
-									v-for="(tok, tIdx) in (verse.tokens || [])" 
-									:key="tIdx" 
-									:class="{ 'proper-noun': tok.isNoun }">{{ tok.text }}</text>
+								<block v-for="(tok, tIdx) in (verse.tokens || [])" :key="tIdx">
+									<template v-if="searchActive && searchKeyword">
+										<text 
+											v-for="(part, pIdx) in getHighlightedParts(tok.text)" 
+											:key="pIdx" 
+											:class="{ 
+												'proper-noun': tok.isNoun,
+												'search-highlight': part.highlight,
+												'search-active-target': part.highlight && currentMatchVerseNum === verse.number
+											}">{{ part.text }}</text>
+									</template>
+									<text v-else :class="{ 'proper-noun': tok.isNoun }">{{ tok.text }}</text>
+								</block>
 							</view>
 						</view>
 					</view>
@@ -232,26 +302,18 @@
 				<text class="toolbar-icon">{{ isPlaying ? '❚❚' : '▷' }}</text>
 				<text class="toolbar-text">{{ isPlaying ? '暂停' : '播放' }}</text>
 			</view>
-			<!-- <view class="toolbar-item">
-				<text class="toolbar-icon"></text>
+			<view class="toolbar-item" :class="{ 'is-active-btn': searchActive }" @click.stop="toggleSearch">
+				<text class="toolbar-icon">🔍</text>
 				<text class="toolbar-text">搜索</text>
 			</view>
-			<view class="toolbar-item">
-				<text class="toolbar-icon">⚖</text>
-				<text class="toolbar-text">对照</text>
+			<view class="toolbar-item" @click.stop="showCopyOptions">
+				<text class="toolbar-icon">📋</text>
+				<text class="toolbar-text">复制</text>
 			</view>
-			<view class="toolbar-item">
-				<text class="toolbar-icon"></text>
-				<text class="toolbar-text">研读</text>
-			</view>
-			<view class="toolbar-item">
-				<text class="toolbar-icon">⚙</text>
-				<text class="toolbar-text">选项</text>
-			</view>
-			<view class="toolbar-item">
-				<text class="toolbar-icon">⋯</text>
-				<text class="toolbar-text">更多</text>
-			</view> -->
+			<button class="toolbar-item toolbar-share-btn" open-type="share">
+				<text class="toolbar-icon">📤</text>
+				<text class="toolbar-text">分享</text>
+			</button>
 		</view>
 		</view>
 	</view>
@@ -322,6 +384,14 @@ export default {
 			// 工具栏显示控制
 			showToolbar: true,
 			toolbarTimer: null,
+
+			// 搜索相关状态
+			searchActive: false,
+			searchKeyword: '',
+			searchResults: [],
+			currentSearchIndex: -1,
+			targetVerseAnchor: '',
+			currentMatchVerseNum: null,
 		}
 	},
 
@@ -487,6 +557,24 @@ export default {
 		});
 	},
 
+	// 微信小程序原生分享配置 (转发好友/群聊)
+	onShareAppMessage(res) {
+		const bookName = this.currentBookInfo ? this.currentBookInfo.fullName : '圣经';
+		return {
+			title: `和我一起读《${bookName}》第 ${this.chapter} 章 · 和合本`,
+			path: `/pages/bible/reading?book=${this.bookId}&chapter=${this.chapter}`
+		};
+	},
+
+	// 微信小程序原生分享配置 (朋友圈)
+	onShareTimeline() {
+		const bookName = this.currentBookInfo ? this.currentBookInfo.fullName : '圣经';
+		return {
+			title: `圣经 · 《${bookName}》第 ${this.chapter} 章 (和合本)`,
+			query: `book=${this.bookId}&chapter=${this.chapter}`
+		};
+	},
+
 	methods: {
 		// 监听经文内容滚动
 		handleScroll(e) {
@@ -604,6 +692,11 @@ export default {
 							this.scrollAreaHeight = data.height;
 						}
 					}).exec();
+
+					// 跨章切换时如处于搜索状态，自动重新在该章执行搜索
+					if (this.searchActive && this.searchKeyword) {
+						this.computeSearchResults();
+					}
 				});
 
 			} catch (error) {
@@ -1022,6 +1115,196 @@ export default {
 			// 立即重新计算并刷新进度数据，向全局广播
 			this.updatePlanProgress();
 			uni.$emit('planProgressUpdated');
+		},
+
+		// ================= 复制相关功能 =================
+		// 长按单节经文复制
+		copyVerse(verse) {
+			if (!verse) return;
+			const bookName = this.currentBookFullName || '';
+			const copyText = `${verse.text}\n（${bookName} ${this.chapter}:${verse.number} 和合本）`;
+			try {
+				uni.vibrateShort();
+			} catch (e) {}
+			uni.setClipboardData({
+				data: copyText,
+				success: () => {
+					uni.showToast({
+						title: `已复制第 ${verse.number} 节`,
+						icon: 'success'
+					});
+				}
+			});
+		},
+
+		// 底部工具栏复制选项弹窗
+		showCopyOptions() {
+			if (!this.verses || this.verses.length === 0) return;
+			const bookName = this.currentBookFullName || '';
+			uni.showActionSheet({
+				itemList: [
+					`复制本章全文（共 ${this.verses.length} 节）`,
+					`复制本章前 5 节`
+				],
+				success: (res) => {
+					if (res.tapIndex === 0) {
+						this.copyFullChapter();
+					} else if (res.tapIndex === 1) {
+						this.copyFirstFiveVerses();
+					}
+				}
+			});
+		},
+
+		// 复制本章全文
+		copyFullChapter() {
+			if (!this.verses || this.verses.length === 0) return;
+			const bookName = this.currentBookFullName || '';
+			const fullText = `《${bookName}》第 ${this.chapter} 章（和合本）\n\n` + 
+				this.verses.map(v => `${v.number} ${v.text}`).join('\n');
+			uni.setClipboardData({
+				data: fullText,
+				success: () => {
+					uni.showToast({
+						title: '本章全文已复制',
+						icon: 'success'
+					});
+				}
+			});
+		},
+
+		// 复制前 5 节经文
+		copyFirstFiveVerses() {
+			if (!this.verses || this.verses.length === 0) return;
+			const bookName = this.currentBookFullName || '';
+			const targetVerses = this.verses.slice(0, 5);
+			const text = `《${bookName}》第 ${this.chapter} 章 1-5 节（和合本）\n\n` + 
+				targetVerses.map(v => `${v.number} ${v.text}`).join('\n');
+			uni.setClipboardData({
+				data: text,
+				success: () => {
+					uni.showToast({
+						title: '前 5 节已复制',
+						icon: 'success'
+					});
+				}
+			});
+		},
+
+		// ================= 搜索与定位相关功能 =================
+		// 切换搜索浮层
+		toggleSearch() {
+			this.searchActive = !this.searchActive;
+			if (!this.searchActive) {
+				this.clearSearch();
+			}
+		},
+
+		// 搜索输入变化
+		onSearchInput(e) {
+			this.searchKeyword = (e && e.detail && e.detail.value) || '';
+			this.computeSearchResults();
+		},
+
+		// 清空当前搜索
+		clearSearch() {
+			this.searchKeyword = '';
+			this.searchResults = [];
+			this.currentSearchIndex = -1;
+			this.currentMatchVerseNum = null;
+			this.targetVerseAnchor = '';
+		},
+
+		// 关闭搜索
+		closeSearch() {
+			this.searchActive = false;
+			this.clearSearch();
+		},
+
+		// 计算搜索匹配项
+		computeSearchResults() {
+			const kw = (this.searchKeyword || '').trim().toLowerCase();
+			if (!kw) {
+				this.searchResults = [];
+				this.currentSearchIndex = -1;
+				this.currentMatchVerseNum = null;
+				this.targetVerseAnchor = '';
+				return;
+			}
+			const results = [];
+			this.verses.forEach((v, idx) => {
+				if (v.text && v.text.toLowerCase().includes(kw)) {
+					results.push({
+						verseNumber: v.number,
+						text: v.text,
+						index: idx
+					});
+				}
+			});
+			this.searchResults = results;
+			if (results.length > 0) {
+				this.currentSearchIndex = 0;
+				this.jumpToSearchResult(0);
+			} else {
+				this.currentSearchIndex = -1;
+				this.currentMatchVerseNum = null;
+			}
+		},
+
+		// 跳转到上一处匹配
+		goToPrevMatch() {
+			if (this.searchResults.length === 0) return;
+			if (this.currentSearchIndex > 0) {
+				this.currentSearchIndex--;
+			} else {
+				this.currentSearchIndex = this.searchResults.length - 1;
+			}
+			this.jumpToSearchResult(this.currentSearchIndex);
+		},
+
+		// 跳转到下一处匹配
+		goToNextMatch() {
+			if (this.searchResults.length === 0) return;
+			if (this.currentSearchIndex < this.searchResults.length - 1) {
+				this.currentSearchIndex++;
+			} else {
+				this.currentSearchIndex = 0;
+			}
+			this.jumpToSearchResult(this.currentSearchIndex);
+		},
+
+		// 定位到指定匹配项并平滑滚动
+		jumpToSearchResult(index) {
+			const target = this.searchResults[index];
+			if (!target) return;
+			this.currentMatchVerseNum = target.verseNumber;
+			this.targetVerseAnchor = '';
+			this.$nextTick(() => {
+				this.targetVerseAnchor = 'v_' + target.verseNumber;
+			});
+		},
+
+		// 文本高亮切分辅助函数
+		getHighlightedParts(text) {
+			const kw = (this.searchKeyword || '').trim();
+			if (!kw || !text) return [{ text, highlight: false }];
+			const parts = [];
+			const lowerText = text.toLowerCase();
+			const lowerKw = kw.toLowerCase();
+			let start = 0;
+			let pos = lowerText.indexOf(lowerKw, start);
+			while (pos !== -1) {
+				if (pos > start) {
+					parts.push({ text: text.substring(start, pos), highlight: false });
+				}
+				parts.push({ text: text.substring(pos, pos + kw.length), highlight: true });
+				start = pos + kw.length;
+				pos = lowerText.indexOf(lowerKw, start);
+			}
+			if (start < text.length) {
+				parts.push({ text: text.substring(start), highlight: false });
+			}
+			return parts;
 		}
 	},
 
@@ -1502,6 +1785,155 @@ export default {
 .toolbar-text {
 	font-size: 20rpx;
 	color: #666;
+}
+
+.toolbar-share-btn {
+	background: transparent;
+	border: none;
+	padding: 0;
+	margin: 0;
+	line-height: normal;
+	font-size: inherit;
+	color: inherit;
+	border-radius: 0;
+}
+
+.toolbar-share-btn::after {
+	border: none;
+}
+
+.toolbar-item.is-active-btn .toolbar-icon {
+	color: #2d5a3f;
+	font-weight: bold;
+}
+
+.toolbar-item.is-active-btn .toolbar-text {
+	color: #2d5a3f;
+	font-weight: bold;
+}
+
+/* 顶部搜索浮动栏 */
+.search-floating-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10rpx 24rpx 14rpx 24rpx;
+	background: #ffffff;
+	border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.03);
+	gap: 16rpx;
+	box-sizing: border-box;
+}
+
+.search-input-wrap {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	background: #f1f4f6;
+	border-radius: 32rpx;
+	padding: 8rpx 20rpx;
+	height: 64rpx;
+	box-sizing: border-box;
+}
+
+.search-icon {
+	font-size: 26rpx;
+	margin-right: 12rpx;
+	opacity: 0.6;
+}
+
+.search-input {
+	flex: 1;
+	font-size: 26rpx;
+	color: #2c3e50;
+	height: 100%;
+}
+
+.search-clear-btn {
+	font-size: 28rpx;
+	color: #95a5a6;
+	padding: 0 8rpx;
+	line-height: 1;
+}
+
+.search-actions {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+}
+
+.search-counter {
+	font-size: 22rpx;
+	color: #7f8c8d;
+	min-width: 60rpx;
+	text-align: right;
+}
+
+.search-nav-btn {
+	width: 52rpx;
+	height: 52rpx;
+	line-height: 48rpx;
+	padding: 0;
+	border-radius: 50%;
+	background: #eef2f5;
+	color: #2c3e50;
+	font-size: 32rpx;
+	font-weight: bold;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+}
+
+.search-nav-btn::after {
+	border: none;
+}
+
+.search-nav-btn[disabled] {
+	opacity: 0.35;
+	background: #f5f5f5;
+}
+
+.search-close-text {
+	font-size: 26rpx;
+	color: #2d5a3f;
+	font-weight: 500;
+	padding: 6rpx 12rpx;
+}
+
+/* 经文搜索高亮与选中聚焦样式 */
+.search-highlight {
+	background-color: #ffecb3;
+	color: #5d4037;
+	border-radius: 4rpx;
+	padding: 0 2rpx;
+	font-weight: 600;
+}
+
+.search-active-target {
+	background-color: #ff9800 !important;
+	color: #ffffff !important;
+	border-radius: 4rpx;
+	padding: 0 4rpx;
+	font-weight: bold;
+}
+
+.verse-active-matched {
+	background: rgba(255, 152, 0, 0.08) !important;
+	border-radius: 8rpx;
+	transition: background 0.3s;
+}
+
+.sup-active-matched {
+	color: #e65100 !important;
+	font-weight: bold !important;
+}
+
+.verse-anchor {
+	display: inline-block;
+	width: 0;
+	height: 0;
+	visibility: hidden;
 }
 
 /* 新增：用于加载和错误提示的样式 */
