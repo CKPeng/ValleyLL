@@ -50,8 +50,11 @@
 					<text class="nav-title">{{ currentBookName || '圣经' }}</text>
 					<text class="nav-subtitle">和合本 ▼</text>
 				</view>
-				<view class="nav-right" @click="goToPlan">
-					<view class="plan-entry-btn">
+				<view class="nav-right">
+					<view class="search-entry-btn" @click.stop="goToSearch">
+						<text class="search-entry-icon">🔍</text>
+					</view>
+					<view class="plan-entry-btn" @click="goToPlan">
 						<text class="plan-entry-icon">📅</text>
 						<text class="plan-entry-text">计划</text>
 					</view>
@@ -288,6 +291,13 @@ export default {
 			});
 		},
 
+		// 跳转到全书经文搜索
+		goToSearch() {
+			uni.navigateTo({
+				url: '/pages/bible/search'
+			});
+		},
+
 		// 返回上一页
 		goBack() {
 			uni.navigateBack();
@@ -451,6 +461,21 @@ export default {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
+}
+
+.search-entry-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 56rpx;
+	height: 56rpx;
+	border-radius: 50%;
+	background: #f4f6f8;
+	margin-right: 16rpx;
+}
+
+.search-entry-icon {
+	font-size: 26rpx;
 }
 
 .plan-entry-btn {

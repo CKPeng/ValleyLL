@@ -490,6 +490,23 @@ export default {
 
 		// 加载章节内容
 		this.loadChapter();
+
+		// 检查是否从全书搜索页面穿透跳转进来
+		if (options && options.targetVerse) {
+			const tv = Number(options.targetVerse);
+			setTimeout(() => {
+				this.currentMatchVerseNum = tv;
+				this.targetVerseAnchor = '';
+				this.$nextTick(() => {
+					this.targetVerseAnchor = 'v_' + tv;
+				});
+				if (options.keyword) {
+					this.searchActive = true;
+					this.searchKeyword = decodeURIComponent(options.keyword);
+					this.computeSearchResults();
+				}
+			}, 600);
+		}
 	},
 
 	onShow() {
@@ -1192,12 +1209,11 @@ export default {
 		},
 
 		// ================= 搜索与定位相关功能 =================
-		// 切换搜索浮层
+		// 点击底部工具栏【搜索】直接进入全书搜索页面
 		toggleSearch() {
-			this.searchActive = !this.searchActive;
-			if (!this.searchActive) {
-				this.clearSearch();
-			}
+			uni.navigateTo({
+				url: '/pages/bible/search'
+			});
 		},
 
 		// 搜索输入变化

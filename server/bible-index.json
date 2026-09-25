@@ -1,0 +1,662 @@
+[
+  {
+    "sn": 1,
+    "kindSN": 1,
+    "chapters": 50,
+    "newOrOld": 0,
+    "pinyin": "CSJ",
+    "shortName": "创",
+    "fullName": "创世记",
+    "bookId": "genesis"
+  },
+  {
+    "sn": 2,
+    "kindSN": 1,
+    "chapters": 40,
+    "newOrOld": 0,
+    "pinyin": "CAJ",
+    "shortName": "出",
+    "fullName": "出埃及记",
+    "bookId": "exodus"
+  },
+  {
+    "sn": 3,
+    "kindSN": 1,
+    "chapters": 27,
+    "newOrOld": 0,
+    "pinyin": "LWJ",
+    "shortName": "利",
+    "fullName": "利未记",
+    "bookId": "leviticus"
+  },
+  {
+    "sn": 4,
+    "kindSN": 1,
+    "chapters": 36,
+    "newOrOld": 0,
+    "pinyin": "MSJ",
+    "shortName": "民",
+    "fullName": "民数记",
+    "bookId": "numbers"
+  },
+  {
+    "sn": 5,
+    "kindSN": 1,
+    "chapters": 34,
+    "newOrOld": 0,
+    "pinyin": "SMJ",
+    "shortName": "申",
+    "fullName": "申命记",
+    "bookId": "deuteronomy"
+  },
+  {
+    "sn": 6,
+    "kindSN": 2,
+    "chapters": 24,
+    "newOrOld": 0,
+    "pinyin": "YS",
+    "shortName": "书",
+    "fullName": "约书亚记",
+    "bookId": "joshua"
+  },
+  {
+    "sn": 7,
+    "kindSN": 2,
+    "chapters": 21,
+    "newOrOld": 0,
+    "pinyin": "SSJ",
+    "shortName": "士",
+    "fullName": "士师记",
+    "bookId": "judges"
+  },
+  {
+    "sn": 8,
+    "kindSN": 2,
+    "chapters": 4,
+    "newOrOld": 0,
+    "pinyin": "LDJ",
+    "shortName": "得",
+    "fullName": "路得记",
+    "bookId": "ruth"
+  },
+  {
+    "sn": 9,
+    "kindSN": 2,
+    "chapters": 31,
+    "newOrOld": 0,
+    "pinyin": "SMS",
+    "shortName": "撒上",
+    "fullName": "撒母耳记上",
+    "bookId": "1samuel"
+  },
+  {
+    "sn": 10,
+    "kindSN": 2,
+    "chapters": 24,
+    "newOrOld": 0,
+    "pinyin": "SMX",
+    "shortName": "撒下",
+    "fullName": "撒母耳记下",
+    "bookId": "2samuel"
+  },
+  {
+    "sn": 11,
+    "kindSN": 2,
+    "chapters": 22,
+    "newOrOld": 0,
+    "pinyin": "LWS",
+    "shortName": "王上",
+    "fullName": "列王纪上",
+    "bookId": "1kings"
+  },
+  {
+    "sn": 12,
+    "kindSN": 2,
+    "chapters": 25,
+    "newOrOld": 0,
+    "pinyin": "LWX",
+    "shortName": "王下",
+    "fullName": "列王纪下",
+    "bookId": "2kings"
+  },
+  {
+    "sn": 13,
+    "kindSN": 2,
+    "chapters": 29,
+    "newOrOld": 0,
+    "pinyin": "LDS",
+    "shortName": "代上",
+    "fullName": "历代志上",
+    "bookId": "1chronicles"
+  },
+  {
+    "sn": 14,
+    "kindSN": 2,
+    "chapters": 36,
+    "newOrOld": 0,
+    "pinyin": "LDX",
+    "shortName": "代下",
+    "fullName": "历代志下",
+    "bookId": "2chronicles"
+  },
+  {
+    "sn": 15,
+    "kindSN": 2,
+    "chapters": 10,
+    "newOrOld": 0,
+    "pinyin": "YSL",
+    "shortName": "拉",
+    "fullName": "以斯拉记",
+    "bookId": "ezra"
+  },
+  {
+    "sn": 16,
+    "kindSN": 2,
+    "chapters": 13,
+    "newOrOld": 0,
+    "pinyin": "NXM",
+    "shortName": "尼",
+    "fullName": "尼希米记",
+    "bookId": "nehemiah"
+  },
+  {
+    "sn": 17,
+    "kindSN": 2,
+    "chapters": 10,
+    "newOrOld": 0,
+    "pinyin": "YST",
+    "shortName": "斯",
+    "fullName": "以斯帖记",
+    "bookId": "esther"
+  },
+  {
+    "sn": 18,
+    "kindSN": 3,
+    "chapters": 42,
+    "newOrOld": 0,
+    "pinyin": "YBJ",
+    "shortName": "伯",
+    "fullName": "约伯记",
+    "bookId": "job"
+  },
+  {
+    "sn": 19,
+    "kindSN": 3,
+    "chapters": 150,
+    "newOrOld": 0,
+    "pinyin": "SP",
+    "shortName": "诗",
+    "fullName": "诗篇",
+    "bookId": "psalms"
+  },
+  {
+    "sn": 20,
+    "kindSN": 3,
+    "chapters": 31,
+    "newOrOld": 0,
+    "pinyin": "ZY",
+    "shortName": "箴",
+    "fullName": "箴言",
+    "bookId": "proverbs"
+  },
+  {
+    "sn": 21,
+    "kindSN": 3,
+    "chapters": 12,
+    "newOrOld": 0,
+    "pinyin": "CDS",
+    "shortName": "传",
+    "fullName": "传道书",
+    "bookId": "ecclesiastes"
+  },
+  {
+    "sn": 22,
+    "kindSN": 3,
+    "chapters": 8,
+    "newOrOld": 0,
+    "pinyin": "YG",
+    "shortName": "歌",
+    "fullName": "雅歌",
+    "bookId": "song"
+  },
+  {
+    "sn": 23,
+    "kindSN": 4,
+    "chapters": 66,
+    "newOrOld": 0,
+    "pinyin": "YSY",
+    "shortName": "赛",
+    "fullName": "以赛亚书",
+    "bookId": "isaiah"
+  },
+  {
+    "sn": 24,
+    "kindSN": 4,
+    "chapters": 52,
+    "newOrOld": 0,
+    "pinyin": "YLM",
+    "shortName": "耶",
+    "fullName": "耶利米书",
+    "bookId": "jeremiah"
+  },
+  {
+    "sn": 25,
+    "kindSN": 4,
+    "chapters": 5,
+    "newOrOld": 0,
+    "pinyin": "YAG",
+    "shortName": "哀",
+    "fullName": "耶利米哀歌",
+    "bookId": "lamentations"
+  },
+  {
+    "sn": 26,
+    "kindSN": 4,
+    "chapters": 48,
+    "newOrOld": 0,
+    "pinyin": "YXJ",
+    "shortName": "结",
+    "fullName": "以西结书",
+    "bookId": "ezekiel"
+  },
+  {
+    "sn": 27,
+    "kindSN": 4,
+    "chapters": 12,
+    "newOrOld": 0,
+    "pinyin": "DYL",
+    "shortName": "但",
+    "fullName": "但以理书",
+    "bookId": "daniel"
+  },
+  {
+    "sn": 28,
+    "kindSN": 5,
+    "chapters": 14,
+    "newOrOld": 0,
+    "pinyin": "HXA",
+    "shortName": "何",
+    "fullName": "何西阿书",
+    "bookId": "hosea"
+  },
+  {
+    "sn": 29,
+    "kindSN": 5,
+    "chapters": 3,
+    "newOrOld": 0,
+    "pinyin": "YES",
+    "shortName": "珥",
+    "fullName": "约珥书",
+    "bookId": "joel"
+  },
+  {
+    "sn": 30,
+    "kindSN": 5,
+    "chapters": 9,
+    "newOrOld": 0,
+    "pinyin": "AMS",
+    "shortName": "摩",
+    "fullName": "阿摩司书",
+    "bookId": "amos"
+  },
+  {
+    "sn": 31,
+    "kindSN": 5,
+    "chapters": 1,
+    "newOrOld": 0,
+    "pinyin": "EBD",
+    "shortName": "俄",
+    "fullName": "俄巴底亚书",
+    "bookId": "obadiah"
+  },
+  {
+    "sn": 32,
+    "kindSN": 5,
+    "chapters": 4,
+    "newOrOld": 0,
+    "pinyin": "YNS",
+    "shortName": "拿",
+    "fullName": "约拿书",
+    "bookId": "jonah"
+  },
+  {
+    "sn": 33,
+    "kindSN": 5,
+    "chapters": 7,
+    "newOrOld": 0,
+    "pinyin": "MJS",
+    "shortName": "弥",
+    "fullName": "弥迦书",
+    "bookId": "micah"
+  },
+  {
+    "sn": 34,
+    "kindSN": 5,
+    "chapters": 3,
+    "newOrOld": 0,
+    "pinyin": "NHS",
+    "shortName": "鸿",
+    "fullName": "那鸿书",
+    "bookId": "nahum"
+  },
+  {
+    "sn": 35,
+    "kindSN": 5,
+    "chapters": 3,
+    "newOrOld": 0,
+    "pinyin": "HBG",
+    "shortName": "哈",
+    "fullName": "哈巴谷书",
+    "bookId": "habakkuk"
+  },
+  {
+    "sn": 36,
+    "kindSN": 5,
+    "chapters": 3,
+    "newOrOld": 0,
+    "pinyin": "XFY",
+    "shortName": "番",
+    "fullName": "西番雅书",
+    "bookId": "zephaniah"
+  },
+  {
+    "sn": 37,
+    "kindSN": 5,
+    "chapters": 2,
+    "newOrOld": 0,
+    "pinyin": "HGS",
+    "shortName": "该",
+    "fullName": "哈该书",
+    "bookId": "haggai"
+  },
+  {
+    "sn": 38,
+    "kindSN": 5,
+    "chapters": 14,
+    "newOrOld": 0,
+    "pinyin": "SJL",
+    "shortName": "亚",
+    "fullName": "撒迦利亚书",
+    "bookId": "zechariah"
+  },
+  {
+    "sn": 39,
+    "kindSN": 5,
+    "chapters": 4,
+    "newOrOld": 0,
+    "pinyin": "MLJ",
+    "shortName": "玛",
+    "fullName": "玛拉基书",
+    "bookId": "malachi"
+  },
+  {
+    "sn": 40,
+    "kindSN": 6,
+    "chapters": 28,
+    "newOrOld": 1,
+    "pinyin": "MT",
+    "shortName": "太",
+    "fullName": "马太福音",
+    "bookId": "matthew"
+  },
+  {
+    "sn": 41,
+    "kindSN": 6,
+    "chapters": 16,
+    "newOrOld": 1,
+    "pinyin": "MK",
+    "shortName": "可",
+    "fullName": "马可福音",
+    "bookId": "mark"
+  },
+  {
+    "sn": 42,
+    "kindSN": 6,
+    "chapters": 24,
+    "newOrOld": 1,
+    "pinyin": "LJ",
+    "shortName": "路",
+    "fullName": "路加福音",
+    "bookId": "luke"
+  },
+  {
+    "sn": 43,
+    "kindSN": 6,
+    "chapters": 21,
+    "newOrOld": 1,
+    "pinyin": "YH",
+    "shortName": "约",
+    "fullName": "约翰福音",
+    "bookId": "john"
+  },
+  {
+    "sn": 44,
+    "kindSN": 6,
+    "chapters": 28,
+    "newOrOld": 1,
+    "pinyin": "ST",
+    "shortName": "徒",
+    "fullName": "使徒行传",
+    "bookId": "acts"
+  },
+  {
+    "sn": 45,
+    "kindSN": 7,
+    "chapters": 16,
+    "newOrOld": 1,
+    "pinyin": "LM",
+    "shortName": "罗",
+    "fullName": "罗马书",
+    "bookId": "romans"
+  },
+  {
+    "sn": 46,
+    "kindSN": 7,
+    "chapters": 16,
+    "newOrOld": 1,
+    "pinyin": "GLQ",
+    "shortName": "林前",
+    "fullName": "哥林多前书",
+    "bookId": "1corinthians"
+  },
+  {
+    "sn": 47,
+    "kindSN": 7,
+    "chapters": 13,
+    "newOrOld": 1,
+    "pinyin": "GLH",
+    "shortName": "林后",
+    "fullName": "哥林多后书",
+    "bookId": "2corinthians"
+  },
+  {
+    "sn": 48,
+    "kindSN": 7,
+    "chapters": 6,
+    "newOrOld": 1,
+    "pinyin": "JLT",
+    "shortName": "加",
+    "fullName": "加拉太书",
+    "bookId": "galatians"
+  },
+  {
+    "sn": 49,
+    "kindSN": 7,
+    "chapters": 6,
+    "newOrOld": 1,
+    "pinyin": "YFS",
+    "shortName": "弗",
+    "fullName": "以弗所书",
+    "bookId": "ephesians"
+  },
+  {
+    "sn": 50,
+    "kindSN": 7,
+    "chapters": 4,
+    "newOrOld": 1,
+    "pinyin": "FLB",
+    "shortName": "腓",
+    "fullName": "腓立比书",
+    "bookId": "philippians"
+  },
+  {
+    "sn": 51,
+    "kindSN": 7,
+    "chapters": 4,
+    "newOrOld": 1,
+    "pinyin": "GLX",
+    "shortName": "西",
+    "fullName": "歌罗西书",
+    "bookId": "colossians"
+  },
+  {
+    "sn": 52,
+    "kindSN": 7,
+    "chapters": 5,
+    "newOrOld": 1,
+    "pinyin": "TSQ",
+    "shortName": "帖前",
+    "fullName": "帖撒罗尼迦前书",
+    "bookId": "1thessalonians"
+  },
+  {
+    "sn": 53,
+    "kindSN": 7,
+    "chapters": 3,
+    "newOrOld": 1,
+    "pinyin": "TSH",
+    "shortName": "帖后",
+    "fullName": "帖撒罗尼迦后书",
+    "bookId": "2thessalonians"
+  },
+  {
+    "sn": 54,
+    "kindSN": 7,
+    "chapters": 6,
+    "newOrOld": 1,
+    "pinyin": "TMQ",
+    "shortName": "提前",
+    "fullName": "提摩太前书",
+    "bookId": "1timothy"
+  },
+  {
+    "sn": 55,
+    "kindSN": 7,
+    "chapters": 4,
+    "newOrOld": 1,
+    "pinyin": "TMH",
+    "shortName": "提后",
+    "fullName": "提摩太后书",
+    "bookId": "2timothy"
+  },
+  {
+    "sn": 56,
+    "kindSN": 7,
+    "chapters": 3,
+    "newOrOld": 1,
+    "pinyin": "TDS",
+    "shortName": "多",
+    "fullName": "提多书",
+    "bookId": "titus"
+  },
+  {
+    "sn": 57,
+    "kindSN": 7,
+    "chapters": 1,
+    "newOrOld": 1,
+    "pinyin": "FLM",
+    "shortName": "门",
+    "fullName": "腓利门书",
+    "bookId": "philemon"
+  },
+  {
+    "sn": 58,
+    "kindSN": 8,
+    "chapters": 13,
+    "newOrOld": 1,
+    "pinyin": "XBL",
+    "shortName": "来",
+    "fullName": "希伯来书",
+    "bookId": "hebrews"
+  },
+  {
+    "sn": 59,
+    "kindSN": 8,
+    "chapters": 5,
+    "newOrOld": 1,
+    "pinyin": "YGS",
+    "shortName": "雅",
+    "fullName": "雅各书",
+    "bookId": "james"
+  },
+  {
+    "sn": 60,
+    "kindSN": 8,
+    "chapters": 5,
+    "newOrOld": 1,
+    "pinyin": "BDQ",
+    "shortName": "彼前",
+    "fullName": "彼得前书",
+    "bookId": "1peter"
+  },
+  {
+    "sn": 61,
+    "kindSN": 8,
+    "chapters": 3,
+    "newOrOld": 1,
+    "pinyin": "BDH",
+    "shortName": "彼后",
+    "fullName": "彼得后书",
+    "bookId": "2peter"
+  },
+  {
+    "sn": 62,
+    "kindSN": 8,
+    "chapters": 5,
+    "newOrOld": 1,
+    "pinyin": "YHY",
+    "shortName": "约壹",
+    "fullName": "约翰壹书",
+    "bookId": "1john"
+  },
+  {
+    "sn": 63,
+    "kindSN": 8,
+    "chapters": 1,
+    "newOrOld": 1,
+    "pinyin": "YHE",
+    "shortName": "约贰",
+    "fullName": "约翰贰书",
+    "bookId": "2john"
+  },
+  {
+    "sn": 64,
+    "kindSN": 8,
+    "chapters": 1,
+    "newOrOld": 1,
+    "pinyin": "YHS",
+    "shortName": "约叁",
+    "fullName": "约翰叁书",
+    "bookId": "3john"
+  },
+  {
+    "sn": 65,
+    "kindSN": 8,
+    "chapters": 1,
+    "newOrOld": 1,
+    "pinyin": "YDS",
+    "shortName": "犹",
+    "fullName": "犹大书",
+    "bookId": "jude"
+  },
+  {
+    "sn": 66,
+    "kindSN": 8,
+    "chapters": 22,
+    "newOrOld": 1,
+    "pinyin": "QSL",
+    "shortName": "启",
+    "fullName": "启示录",
+    "bookId": "revelation"
+  }
+]
