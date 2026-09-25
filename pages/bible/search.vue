@@ -260,14 +260,21 @@ export default {
 			this.hasSearched = true;
 
 			try {
+				// 获取 openid
+				const userInfo = uni.getStorageSync('VALLEY_USER_INFO') || uni.getStorageSync('VALLEY_BIBLE_USER_INFO_V1');
+				const openid = userInfo && userInfo.openid ? userInfo.openid : '';
+
 				// 优先请求服务端全文检索接口
-				const searchUrl = `${BIBLE_API_BASE}/search?keyword=${encodeURIComponent(kw)}&scope=${this.currentScope}&limit=100`;
+				const searchUrl = `${BIBLE_API_BASE}/search?keyword=${encodeURIComponent(kw)}&scope=${this.currentScope}&limit=100${openid ? '&openid=' + encodeURIComponent(openid) : ''}`;
 				const resp = await new Promise((resolve, reject) => {
 					uni.request({
 						url: searchUrl,
 						method: 'GET',
 						dataType: 'json',
 						timeout: 8000,
+						header: {
+							'x-openid': openid || ''
+						},
 						success: resolve,
 						fail: reject
 					});
@@ -294,6 +301,11 @@ export default {
 			const matched = [];
 			const filteredBooks = this.getBooksByScope(this.currentScope);
 
+			// 获取 openid（支持白名单经文放行）
+			const userInfo = uni.getStorageSync('VALLEY_USER_INFO') || uni.getStorageSync('VALLEY_BIBLE_USER_INFO_V1');
+			const openid = userInfo && userInfo.openid ? userInfo.openid : '';
+			const openidParam = openid ? `?openid=${encodeURIComponent(openid)}` : '';
+
 			// 优先并行检查关键经卷
 			for (let i = 0; i < filteredBooks.length && matched.length < 50; i++) {
 				const book = filteredBooks[i];
@@ -301,7 +313,7 @@ export default {
 				const maxSample = Math.min(3, book.chapters || 1);
 				for (let ch = 1; ch <= maxSample && matched.length < 50; ch++) {
 					try {
-						const url = `${BIBLE_ASSETS_BASE}/bible-data/volume-${book.sn}-chapter-${ch}.json`;
+						const url = `${BIBLE_ASSETS_BASE}/bible-data/volume-${book.sn}-chapter-${ch}.json${openidParam}`;
 						const res = await new Promise((resolve, reject) => {
 							uni.request({ url, dataType: 'json', success: resolve, fail: reject });
 						});
