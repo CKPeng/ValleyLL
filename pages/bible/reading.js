@@ -42,7 +42,17 @@ export default {
 			timerInterval: null,
 			showTimerCompleteModal: false,
 			elapsedSecondsSinceLastSync: 0,
-			hasAutoTriggeredTimer: false, // 方案 A：滚动自动提醒并启动计时的防抖锁
+			lastPauseTimestamp: 0, // 手动暂停时间戳，用于惯性滚动防误唤醒冷却
+			pauseScrollTop: 0,      // 暂停时的滚动位置，用于位移判定
+
+			// 随心拖动 · 指尖助读线 (Finger Guide Line)
+			guideLineVisible: uni.getStorageSync('bible_guide_line_visible') !== false, // 默认开启
+			guideLineTop: uni.getStorageSync('bible_guide_line_top') || 280, // 默认距顶像素
+			guideLineDragging: false,
+			guideLineStartY: 0,
+			guideLineStartTop: 0,
+			guideLineMinTop: 120,
+			guideLineMaxTop: 700,
 
 			// 触摸滑动相关
 			touchStartX: 0,
@@ -248,6 +258,15 @@ export default {
 					this.scrollAreaHeight = data.height;
 				}
 			}).exec();
+
+			// 测量屏幕高度并确定指尖助读线安全滑动区间
+			const sys = uni.getSystemInfoSync();
+			const winH = sys.windowHeight || 800;
+			this.guideLineMinTop = (this.navBarTop || 44) + (this.navBarHeight || 44) + 40;
+			this.guideLineMaxTop = winH - 90;
+			if (!uni.getStorageSync('bible_guide_line_top')) {
+				this.guideLineTop = Math.round(this.guideLineMinTop + (this.guideLineMaxTop - this.guideLineMinTop) * 0.35);
+			}
 		});
 	},
 
@@ -281,19 +300,23 @@ export default {
 				this.hideToolbar();
 			}
 
-			// 方案 A：通过计划进入时，开始滚动屏幕自动提醒并开启专注计时
-			if (this.fromPlan && !this.timerRunning && !this.hasAutoTriggeredTimer) {
-				if (scrollTop > 30) {
-					this.hasAutoTriggeredTimer = true;
+			// 方案 A 增强：通过计划进入时，无论初次阅读还是暂停后，滚动屏幕均自动恢复专注计时
+			if (this.fromPlan && !this.timerRunning && this.timerSeconds > 0) {
+				const now = Date.now();
+				// 防惯性误唤醒保护：距离手动暂停必须超过 800ms，且产生了新的滚动位移 (> 20px)
+				const isCooledDown = !this.lastPauseTimestamp || (now - this.lastPauseTimestamp > 800);
+				const hasMoved = Math.abs(scrollTop - (this.pauseScrollTop || 0)) > 20 || scrollTop > 30;
+
+				if (isCooledDown && hasMoved) {
 					const remaining = this.timerSeconds;
-					this.startFocusTimer(true); // 静默启动底层计时器，由下方定制提示
+					this.startFocusTimer(true); // 静默启动底层计时器，由定制提示反馈
 					const m = Math.floor(remaining / 60);
 					const s = remaining % 60;
 					const formatted = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 					uni.showToast({
-						title: remaining === 1500 ? '⏱ 已开启 25 分钟专注计时' : `⏱ 已继续专注进度（剩余 ${formatted}）`,
+						title: remaining === 1500 ? '⏱ 已开启 25 分钟专注计时' : `⏱ 已继续专注计时（剩余 ${formatted}）`,
 						icon: 'none',
-						duration: 2200
+						duration: 2000
 					});
 				}
 			}
@@ -328,8 +351,10 @@ export default {
 		async loadChapter() {
 			if (!this.currentBookInfo) return;
 
-			// 每次新加载章节，重置自动触发锁
-			this.hasAutoTriggeredTimer = false;
+			// 每次新加载章节，重置自动触发锁与暂停位置、取消聚光灯锁定
+			this.lastPauseTimestamp = 0;
+			this.pauseScrollTop = 0;
+			this.focusedVerseNum = null;
 
 			// 停止当前播放的音频
 			if (this.audioContext && this.isPlaying) {
@@ -709,6 +734,8 @@ export default {
 
 		pauseFocusTimer(silent = false) {
 			this.timerRunning = false;
+			this.lastPauseTimestamp = Date.now();
+			this.pauseScrollTop = this.oldScrollTop || 0;
 			if (this.timerInterval) {
 				clearInterval(this.timerInterval);
 				this.timerInterval = null;
@@ -1015,6 +1042,42 @@ export default {
 				parts.push({ text: text.substring(start), highlight: false });
 			}
 			return parts;
+		},
+
+		// ================= 随心拖动 · 指尖助读线 =================
+		onGuideTouchStart(e) {
+			if (!e || !e.touches || !e.touches[0]) return;
+			this.guideLineDragging = true;
+			this.guideLineStartY = e.touches[0].clientY;
+			this.guideLineStartTop = this.guideLineTop;
+		},
+
+		onGuideTouchMove(e) {
+			if (!this.guideLineDragging || !e || !e.touches || !e.touches[0]) return;
+			const currentY = e.touches[0].clientY;
+			const deltaY = currentY - this.guideLineStartY;
+			let targetTop = this.guideLineStartTop + deltaY;
+			if (targetTop < this.guideLineMinTop) {
+				targetTop = this.guideLineMinTop;
+			} else if (targetTop > this.guideLineMaxTop) {
+				targetTop = this.guideLineMaxTop;
+			}
+			this.guideLineTop = targetTop;
+		},
+
+		onGuideTouchEnd() {
+			this.guideLineDragging = false;
+			uni.setStorageSync('bible_guide_line_top', this.guideLineTop);
+		},
+
+		toggleGuideLine() {
+			this.guideLineVisible = !this.guideLineVisible;
+			uni.setStorageSync('bible_guide_line_visible', this.guideLineVisible);
+			uni.showToast({
+				title: this.guideLineVisible ? '👉 指尖助读线已显示' : '助读线已收起',
+				icon: 'none',
+				duration: 1500
+			});
 		}
 	},
 

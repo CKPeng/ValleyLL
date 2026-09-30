@@ -870,3 +870,71 @@
 .return-home-btn::after {
 	border: none;
 }
+
+/* ========================================================
+   方案B：正中行隙下沉指读 (Finger Guide Line)
+   ======================================================== */
+
+.pure-guide-line-wrap {
+	position: fixed;
+	left: 0;
+	right: 0;
+	z-index: 95;
+	pointer-events: none; /* 贯穿横线整体不阻断屏幕滑屏手势 */
+
+	&:not(.is-dragging) {
+		transition: top 0.08s ease-out;
+	}
+
+	&.is-dragging {
+		transition: none;
+	}
+}
+
+/* 贯穿水平细光线：横卧在当前读的那一行下方 */
+.pure-guide-beam {
+	width: 100%;
+	height: 3rpx;
+	background: linear-gradient(
+		90deg,
+		rgba(217, 119, 6, 0.03) 0%,
+		rgba(217, 119, 6, 0.75) 15%,
+		rgba(180, 83, 9, 0.95) 50%,
+		rgba(217, 119, 6, 0.75) 85%,
+		rgba(217, 119, 6, 0.03) 100%
+	);
+	box-shadow: 0 0 8rpx rgba(217, 119, 6, 0.3);
+}
+
+/* 正中下沉手指手柄：严格置于横线正下方，指尖向上贴着横线，绝对不遮挡横线上方文字 */
+.pure-guide-finger-handle {
+	position: absolute;
+	left: 50%;
+	top: 2rpx; /* 关键：严格从横线下方 2rpx 开始向下生长，上沿完全不越界 */
+	transform: translateX(-50%);
+	pointer-events: auto; /* 仅手指热区响应触摸拖拽 */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 4rpx 32rpx 20rpx 32rpx; /* 舒适触摸热区，背景全透明 */
+	background: transparent; /* 彻底去除实心白底！ */
+	touch-action: none;
+	user-select: none;
+
+	.finger-symbol {
+		font-size: 34rpx;
+		line-height: 1;
+		opacity: 0.92;
+		filter: drop-shadow(0 2rpx 6rpx rgba(0, 0, 0, 0.16));
+		transition: transform 0.15s ease, opacity 0.15s ease;
+	}
+
+	&:active .finger-symbol {
+		transform: scale(1.18); /* 按住拖动时指尖轻微放大，提供清晰物理力反馈 */
+		opacity: 1;
+	}
+}
+
+
+
+

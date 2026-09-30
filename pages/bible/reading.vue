@@ -258,7 +258,7 @@
 					</view>
 				</view>
 
-			<!-- 经文末尾读完打卡卡片 -->
+				<!-- 经文末尾读完打卡卡片 -->
 				<view class="reading-finish-section" v-if="verses.length > 0">
 					<button class="finish-chapter-btn" :class="{ 'btn-is-checked': isCurrentChapterFinished }" @click="toggleChapterCheck">
 						{{ isCurrentChapterFinished ? '本章已打卡 ✔' : '✓ 读完打卡本章 (+约 ' + chapterWordCount + ' 字)' }}
@@ -276,6 +276,26 @@
 				</view>
 			</view>
 		</scroll-view>
+
+		<!-- 方案B：正中行隙下沉指读 (Finger Guide Line) -->
+		<view 
+			v-if="guideLineVisible" 
+			class="pure-guide-line-wrap"
+			:class="{ 'is-dragging': guideLineDragging }"
+			:style="{ top: guideLineTop + 'px' }">
+			<!-- 贯穿细光线 (横卧在行与行的空隙中) -->
+			<view class="pure-guide-beam"></view>
+
+			<!-- 正中下沉手指抓手 (严格位于横线正下方，向上指 👆，无白底，绝不遮挡当前阅读行) -->
+			<view 
+				class="pure-guide-finger-handle"
+				@touchstart.stop="onGuideTouchStart"
+				@touchmove.stop="onGuideTouchMove"
+				@touchend.stop="onGuideTouchEnd"
+				@touchcancel.stop="onGuideTouchEnd">
+				<text class="finger-symbol">👆</text>
+			</view>
+		</view>
 
 		<!-- 25 分钟专注达成弹窗 -->
 		<view v-if="showTimerCompleteModal" class="timer-modal-mask" @click="closeTimerModal">
@@ -309,8 +329,8 @@
 				<text class="toolbar-text">分享</text>
 			</button>
 		</view>
-		</view>
 	</view>
+</view>
 </template>
 
 <script src="./reading.js"></script>
