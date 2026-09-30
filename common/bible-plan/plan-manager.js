@@ -270,10 +270,21 @@ class BiblePlanManager {
       Number(localPlan.focusMinutesTotal) || 0,
       Number(cloudPlan.focusMinutesTotal) || 0
     );
-    const mergedStreakDays = Math.max(
-      Number(localPlan.streakDays) || 0,
-      Number(cloudPlan.streakDays) || 0
-    );
+    // 智能合并连续天数：优先以 lastReadDate 较新的一端为准，防止断卡重置后被旧设备历史最大值“复活”
+    let mergedStreakDays = 0;
+    const localDate = localPlan.lastReadDate || '';
+    const cloudDate = cloudPlan.lastReadDate || '';
+    if (localDate && cloudDate) {
+      if (localDate > cloudDate) {
+        mergedStreakDays = Number(localPlan.streakDays) || 0;
+      } else if (cloudDate > localDate) {
+        mergedStreakDays = Number(cloudPlan.streakDays) || 0;
+      } else {
+        mergedStreakDays = Math.max(Number(localPlan.streakDays) || 0, Number(cloudPlan.streakDays) || 0);
+      }
+    } else {
+      mergedStreakDays = Number(localPlan.streakDays) || Number(cloudPlan.streakDays) || 0;
+    }
 
     // 3. 智能合并主轨与辅轨卷章进度 (核心修复：永远取进度更靠前的书卷指针，防止新设备空白创世记1章覆盖已有成果)
     const mergedMainTrack = pickFurtherTrack(localPlan.mainTrack, cloudPlan.mainTrack);
@@ -429,6 +440,18 @@ class BiblePlanManager {
       this.plan.dailyFocusMinutes = {};
     }
     const today = getTodayString();
+    // 跨天检测：断卡重置判定
+    if (this.plan.lastReadDate && this.plan.lastReadDate !== today) {
+      const lastDate = new Date(this.plan.lastReadDate.replace(/-/g, '/'));
+      const curDate = new Date(today.replace(/-/g, '/'));
+      const dayDiff = Math.round((curDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+      // 若间隔超过1天未打卡，说明断卡了，连续天数重置为0（今日打卡后会变成1）
+      if (dayDiff > 1 && (this.plan.streakDays || 0) > 0) {
+        this.plan.streakDays = 0;
+        this.save();
+      }
+    }
+
     if (this.plan.lastFocusDate && this.plan.lastFocusDate !== today) {
       // 将旧日的专注时长固化留存在历史档案字典中，杜绝跨天被直接覆盖清零
       if (this.plan.todayFocusMinutes > 0) {
@@ -506,10 +529,10 @@ class BiblePlanManager {
 
     // 连续天数计算
     if (this.plan.lastReadDate !== today) {
-      const lastDate = this.plan.lastReadDate ? new Date(this.plan.lastReadDate) : null;
-      const curDate = new Date(today);
-      if (lastDate) {
-        const dayDiff = Math.round((curDate - lastDate) / (1000 * 60 * 60 * 24));
+      const lastDate = this.plan.lastReadDate ? new Date(this.plan.lastReadDate.replace(/-/g, '/')) : null;
+      const curDate = new Date(today.replace(/-/g, '/'));
+      if (lastDate && !isNaN(lastDate.getTime())) {
+        const dayDiff = Math.round((curDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
         if (dayDiff === 1) {
           this.plan.streakDays = (this.plan.streakDays || 0) + 1;
         } else if (dayDiff > 1) {
@@ -550,25 +573,27 @@ class BiblePlanManager {
     const book = bibleIndex.find(b => b.sn === sn);
     if (!book) return;
 
-    const isOld = book.newOrOld === 0;
-    const targetTrack = isOld ? this.plan.mainTrack : this.plan.subTrack;
+    // 判断打卡章节匹配哪个轨道（按指针位置匹配，不按旧约/新约区分）
+    let targetTrack = null;
+    if (this.plan.mainTrack && this.plan.mainTrack.sn === sn && this.plan.mainTrack.chapter === chapter) {
+      targetTrack = this.plan.mainTrack;
+    } else if (this.plan.subTrack && this.plan.subTrack.sn === sn && this.plan.subTrack.chapter === chapter) {
+      targetTrack = this.plan.subTrack;
+    }
+    if (!targetTrack) return;
 
-    if (targetTrack.sn === sn && targetTrack.chapter === chapter) {
-      if (chapter < book.chapters) {
-        targetTrack.chapter = chapter + 1;
-      } else {
-        let nextSn = sn + 1;
-        if (isOld && nextSn > 39) {
-          nextSn = 1;
-        } else if (!isOld && nextSn > 66) {
-          nextSn = 40;
-        }
-        const nextBook = bibleIndex.find(b => b.sn === nextSn);
-        if (nextBook) {
-          targetTrack.sn = nextBook.sn;
-          targetTrack.bookId = nextBook.bookId;
-          targetTrack.chapter = 1;
-        }
+    if (chapter < book.chapters) {
+      targetTrack.chapter = chapter + 1;
+    } else {
+      let nextSn = sn + 1;
+      if (nextSn > 66) {
+        nextSn = 1; // 全书66卷读完，回到创世记开新一轮
+      }
+      const nextBook = bibleIndex.find(b => b.sn === nextSn);
+      if (nextBook) {
+        targetTrack.sn = nextBook.sn;
+        targetTrack.bookId = nextBook.bookId;
+        targetTrack.chapter = 1;
       }
     }
   }
@@ -759,7 +784,7 @@ class BiblePlanManager {
     let tempSn = mainSn;
     let tempBook = mainBook;
 
-    while (mainAccumWords < mainTargetWords && tempSn <= 39) {
+    while (mainAccumWords < mainTargetWords && tempSn <= 66) {
       const estWords = getEstimatedChapterWords(tempBook.bookId, curChap);
       const isFinished = this.isChapterFinished(tempSn, curChap);
 

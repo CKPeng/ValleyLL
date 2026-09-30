@@ -459,7 +459,7 @@
 					</view>
 
 					<!-- 主轨清单 -->
-					<view class="track-block">
+					<view class="track-block" v-if="recommendation.mainList && recommendation.mainList.length > 0">
 						<view class="track-header" style="justify-content: space-between;">
 							<view style="display: flex; align-items: center;">
 								<text class="track-tag main-tag">主轨</text>

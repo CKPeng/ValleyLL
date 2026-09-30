@@ -49,11 +49,51 @@ const pool = mysql.createPool({
               FOREIGN KEY (user_id) REFERENCES bible_user(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户读经计划云端存储';
         `);
+        // 历史打卡记录时区校准补丁：将早期因为 UTC 时区少存 8 小时的打卡记录一次性补正 +8 小时
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS bible_db_patch_log (
+                patch_name VARCHAR(100) PRIMARY KEY,
+                applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        `);
+        const [applied] = await pool.query('SELECT patch_name FROM bible_db_patch_log WHERE patch_name = ?', ['patch_fix_timezone_utc8_v1']);
+        if (applied.length === 0) {
+            console.log('[Migration] 正在执行历史打卡记录时区校准 (+8 小时)...');
+            await pool.query(`
+                UPDATE bible_checkin_record 
+                SET create_time = DATE_ADD(create_time, INTERVAL 8 HOUR) 
+                WHERE id > 0
+            `);
+            await pool.query('INSERT INTO bible_db_patch_log (patch_name) VALUES (?)', ['patch_fix_timezone_utc8_v1']);
+            console.log('[Migration] 历史打卡记录时区校准完成');
+        }
         console.log('[Init] 用户主表与云端计划表就绪');
     } catch (e) {
         console.error('[Init] 表初始化失败:', e);
     }
 })();
+
+// 获取精确的东八区北京时间与日期
+function getBeijingDateInfo() {
+    const now = new Date();
+    // UTC 毫秒数加上 8 小时
+    const bjNow = new Date(now.getTime() + (8 * 60 + now.getTimezoneOffset()) * 60000);
+    const pad = (n) => String(n).padStart(2, '0');
+    const y = bjNow.getFullYear();
+    const m = pad(bjNow.getMonth() + 1);
+    const d = pad(bjNow.getDate());
+    const hh = pad(bjNow.getHours());
+    const mm = pad(bjNow.getMinutes());
+    const ss = pad(bjNow.getSeconds());
+    
+    const todayStr = `${y}-${m}-${d}`;
+    const nowDateTimeStr = `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+
+    const bjYest = new Date(bjNow.getTime() - 24 * 3600 * 1000);
+    const yestStr = `${bjYest.getFullYear()}-${pad(bjYest.getMonth() + 1)}-${pad(bjYest.getDate())}`;
+
+    return { todayStr, yestStr, nowDateTimeStr };
+}
 
 function parseShowPlay(raw) {
     if (raw === null || raw === undefined) return false;
@@ -366,6 +406,7 @@ bibleRouter.get('/team/info', async (req, res) => {
         }
 
         const tId = team.id;
+        const { todayStr, yestStr } = getBeijingDateInfo();
 
         const [members] = await pool.query(
             `SELECT m.id, m.openid, m.nickname, m.avatar, m.role, m.join_time,
@@ -375,28 +416,76 @@ bibleRouter.get('/team/info', async (req, res) => {
              LEFT JOIN (
                  SELECT openid, SUM(words_read) AS today_words
                  FROM bible_checkin_record
-                 WHERE team_id = ? AND checkin_date = CURDATE()
+                 WHERE team_id = ? AND checkin_date = ?
                  GROUP BY openid
              ) today_stat ON m.openid = today_stat.openid
              LEFT JOIN (
                  SELECT openid, SUM(words_read) AS week_words
                  FROM bible_checkin_record
-                 WHERE team_id = ? AND checkin_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+                 WHERE team_id = ? AND checkin_date >= DATE_SUB(?, INTERVAL 7 DAY)
                  GROUP BY openid
              ) week_stat ON m.openid = week_stat.openid
              WHERE m.team_id = ?
              ORDER BY today_words DESC, week_words DESC`,
-            [tId, tId, tId]
+            [tId, todayStr, tId, todayStr, tId]
         );
 
         const [records] = await pool.query(
-            `SELECT r.id, r.openid, m.nickname, m.avatar, r.checkin_date, r.words_read, r.duration_seconds, r.chapters_finished, r.reflection, r.create_time
+            `SELECT r.id, r.openid, m.nickname, m.avatar, r.checkin_date, r.words_read, r.duration_seconds, r.chapters_finished, r.reflection,
+                    DATE_FORMAT(r.create_time, '%Y-%m-%d %H:%i:%s') AS create_time
              FROM bible_checkin_record r
              LEFT JOIN bible_team_member m ON r.openid = m.openid AND m.team_id = r.team_id
              WHERE r.team_id = ?
              ORDER BY r.id DESC LIMIT 25`,
             [tId]
         );
+
+        // 统计各位队员的真实连续打卡天数 (streak_days)
+        const memberOpenids = members.map(m => m.openid);
+        const streakMap = {};
+        if (memberOpenids.length > 0) {
+            const [allDates] = await pool.query(
+                `SELECT DISTINCT openid, checkin_date
+                 FROM bible_checkin_record
+                 WHERE openid IN (?)
+                 ORDER BY openid, checkin_date DESC`,
+                [memberOpenids]
+            );
+            const userDates = {};
+            allDates.forEach(r => {
+                if (!userDates[r.openid]) userDates[r.openid] = [];
+                // 格式化为 YYYY-MM-DD
+                const dStr = r.checkin_date instanceof Date 
+                    ? r.checkin_date.toISOString().split('T')[0] 
+                    : String(r.checkin_date).split(' ')[0];
+                userDates[r.openid].push(dStr);
+            });
+
+            memberOpenids.forEach(oid => {
+                const dates = userDates[oid] || [];
+                if (dates.length === 0) {
+                    streakMap[oid] = 0;
+                    return;
+                }
+                // 必须在今天或昨天有打卡才算连续有效
+                if (dates[0] !== todayStr && dates[0] !== yestStr) {
+                    streakMap[oid] = 0;
+                    return;
+                }
+                let streak = 1;
+                for (let i = 0; i < dates.length - 1; i++) {
+                    const cur = new Date(dates[i]);
+                    const prev = new Date(dates[i + 1]);
+                    const diff = Math.round((cur - prev) / (24 * 3600 * 1000));
+                    if (diff === 1) {
+                        streak++;
+                    } else if (diff > 1) {
+                        break;
+                    }
+                }
+                streakMap[oid] = streak;
+            });
+        }
 
         const totalTodayWords = members.reduce((sum, item) => sum + Number(item.today_words || 0), 0);
         const targetWords = team.target_words_daily || 5000;
@@ -425,6 +514,7 @@ bibleRouter.get('/team/info', async (req, res) => {
                 role: m.role,
                 todayWords: Number(m.today_words),
                 weekWords: Number(m.week_words),
+                streakDays: streakMap[m.openid] || (Number(m.today_words) > 0 ? 1 : 0),
                 isFinishedToday: Number(m.today_words) > 0
             })),
             activityFeed: records.map(r => ({
@@ -473,15 +563,17 @@ bibleRouter.post('/team/checkin', async (req, res) => {
             );
         }
 
+        const { todayStr, nowDateTimeStr } = getBeijingDateInfo();
+
         const [result] = await pool.query(
-            `INSERT INTO bible_checkin_record (team_id, openid, checkin_date, words_read, duration_seconds, chapters_finished, reflection)
-             VALUES (?, ?, CURDATE(), ?, ?, ?, ?)`,
-            [actualTeamId, openid, wordsRead, durationSeconds, chaptersFinished, reflection]
+            `INSERT INTO bible_checkin_record (team_id, openid, checkin_date, words_read, duration_seconds, chapters_finished, reflection, create_time)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [actualTeamId, openid, todayStr, wordsRead, durationSeconds, chaptersFinished, reflection, nowDateTimeStr]
         );
 
         const [todaySum] = await pool.query(
-            'SELECT SUM(words_read) AS today_total FROM bible_checkin_record WHERE openid = ? AND checkin_date = CURDATE()',
-            [openid]
+            'SELECT SUM(words_read) AS today_total FROM bible_checkin_record WHERE openid = ? AND checkin_date = ?',
+            [openid, todayStr]
         );
 
         return ok(res, {
@@ -510,7 +602,8 @@ bibleRouter.get('/my-stats', async (req, res) => {
         );
 
         const [recentList] = await pool.query(
-            `SELECT id, checkin_date, words_read, duration_seconds, chapters_finished, reflection, create_time
+            `SELECT id, checkin_date, words_read, duration_seconds, chapters_finished, reflection,
+                    DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s') AS create_time
              FROM bible_checkin_record
              WHERE openid = ?
              ORDER BY id DESC LIMIT 14`,

@@ -1,0 +1,872 @@
+.reading-container {
+	height: 100vh;
+	background: #f2f6f9; /* 微读圣经经典清透纸张底色 */
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.sticky-header {
+	flex-shrink: 0;
+	background: #f2f6f9;
+	z-index: 100;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+/* 正式阅读模式外层：必须是纵向 flex 容器，否则内部 scroll-view 的 flex:1 失效 */
+.real-reading-view {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.reading-scroll-area {
+	flex: 1;
+	min-height: 0;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+/* 顶部导航栏 (微读圣经样式，高度与位置严格与微信胶囊水平居中并避让) */
+.nav-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding-left: 28rpx;
+	background: #f2f6f9;
+	border-bottom: 1rpx solid #e5edf2;
+	box-sizing: border-box;
+}
+
+.nav-left {
+	display: flex;
+	align-items: center;
+}
+
+.back-arrow-icon {
+	width: 18rpx;
+	height: 18rpx;
+	border-left: 4rpx solid #66757f;
+	border-bottom: 4rpx solid #66757f;
+	transform: rotate(45deg);
+	display: inline-block;
+	margin-right: 14rpx;
+	box-sizing: border-box;
+}
+
+.nav-book-name {
+	font-size: 34rpx;
+	color: #d96363; /* 珊瑚红书卷名 */
+	font-weight: 600;
+}
+
+.nav-chap-num {
+	font-size: 32rpx;
+	color: #e57373;
+	margin-left: 12rpx;
+	font-weight: 500;
+}
+
+.nav-right-safe {
+	display: flex;
+	align-items: center;
+	padding-right: 12rpx;
+}
+
+.version-label {
+	font-size: 26rpx;
+	color: #d96363;
+	font-weight: 500;
+}
+
+/* 章节辅助控制栏 (微读切换胶囊 + 番茄钟 + 打卡，严格居中对齐) */
+.chapter-sub-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 14rpx 28rpx;
+	background: #f2f6f9;
+	border-bottom: 1rpx solid #e5edf2;
+	gap: 16rpx;
+}
+
+.plan-progress-bar {
+	display: flex;
+	justify-content: space-around;
+	align-items: center;
+	padding: 10rpx 16rpx;
+	background: #fbf8f2;
+	border-bottom: 1rpx solid #e7ded0;
+}
+
+.progress-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.progress-label {
+	font-size: 20rpx;
+	color: #92847a;
+	margin-bottom: 2rpx;
+}
+
+.progress-value {
+	font-size: 26rpx;
+	font-weight: bold;
+	color: #2c2523;
+}
+
+.progress-unit {
+	font-size: 20rpx;
+	font-weight: normal;
+	color: #92847a;
+	margin-left: 2rpx;
+}
+
+.progress-value.highlight {
+	color: #c58b43;
+}
+
+.progress-value.highlight-today {
+	color: #2e7d32;
+}
+
+.casual-progress-bar {
+	padding: 10rpx 28rpx;
+	background: #fbf8f2;
+	border-bottom: 1rpx solid #e7ded0;
+	text-align: center;
+}
+
+.casual-words {
+	font-size: 22rpx;
+	color: #92847a;
+}
+
+/* 排版切换胶囊 (纸版 vs 分节) */
+.mode-switch-capsule {
+	display: inline-flex;
+	align-items: center;
+	background: #e2ebf2;
+	border-radius: 36rpx;
+	padding: 4rpx;
+	flex-shrink: 0;
+	height: 56rpx;
+	box-sizing: border-box;
+}
+
+.mode-switch-item {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 48rpx;
+	padding: 0 22rpx;
+	border-radius: 24rpx;
+	transition: all 0.2s ease;
+	box-sizing: border-box;
+}
+
+.mode-switch-item.is-active {
+	background: #ffffff;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+}
+
+.mode-switch-text {
+	font-size: 24rpx;
+	color: #667885;
+	font-weight: 500;
+	line-height: 1;
+	display: inline-block;
+}
+
+.mode-switch-item.is-active .mode-switch-text {
+	color: #1a2228;
+	font-weight: bold;
+}
+
+.sub-center-group {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+	flex: 1;
+	justify-content: center;
+}
+
+/* 番茄钟药丸 */
+.timer-pill {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 52rpx;
+	padding: 0 18rpx;
+	background: #fbf5eb;
+	border: 1rpx solid #eddcc5;
+	border-radius: 26rpx;
+	box-sizing: border-box;
+}
+
+.timer-pill-active {
+	background: #fff0db;
+	border-color: #ffd8a8;
+}
+
+.timer-icon {
+	font-size: 24rpx;
+	margin-right: 6rpx;
+	line-height: 1;
+}
+
+.timer-time {
+	font-size: 24rpx;
+	font-weight: bold;
+	color: #b3732d;
+	font-family: monospace;
+	line-height: 1;
+}
+
+/* 字数标签 */
+.chapter-words-tag {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 52rpx;
+	padding: 0 14rpx;
+	font-size: 22rpx;
+	color: #8c7b6f;
+	background: #ece5d8;
+	border-radius: 12rpx;
+	line-height: 1;
+	white-space: nowrap;
+	box-sizing: border-box;
+}
+
+/* 完成打卡按钮 */
+.chapter-check-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 54rpx;
+	padding: 0 24rpx;
+	background: #c58b43;
+	border-radius: 27rpx;
+	flex-shrink: 0;
+	box-sizing: border-box;
+}
+
+.chapter-check-btn.is-checked {
+	background: #e6fcf5;
+	border: 1rpx solid #b2f2bb;
+}
+
+.check-btn-text {
+	font-size: 24rpx;
+	color: #ffffff;
+	font-weight: bold;
+	line-height: 1;
+	display: inline-block;
+	white-space: nowrap;
+}
+
+.chapter-check-btn.is-checked .check-btn-text {
+	color: #2b8a3e;
+}
+
+/* 经文内容主体 */
+.bible-content {
+	padding: 24rpx 36rpx;
+	padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+	background: #f2f6f9;
+}
+
+/* ==================== 1. 微读圣经纸版排版系统 ==================== */
+.paper-reading-area {
+	padding-top: 10rpx;
+}
+
+.paper-block {
+	margin-bottom: 24rpx;
+}
+
+/* 段落小标题 (微读加粗小标题) */
+.paper-section-title {
+	margin-top: 40rpx;
+	margin-bottom: 24rpx;
+}
+
+.section-title-text {
+	font-size: 34rpx;
+	font-weight: bold;
+	color: #111111;
+	letter-spacing: 1rpx;
+}
+
+/* 正常散文段落 (流式折行 + Drop Cap 大章号) */
+.paper-prose-paragraph {
+	font-size: 33rpx;
+	line-height: 1.95;
+	color: #262626;
+	text-align: justify;
+	text-justify: inter-ideograph;
+	letter-spacing: 0.8rpx;
+	margin-bottom: 26rpx;
+}
+
+/* 超大章号下沉 (Drop Cap 占据首两行) */
+.drop-cap-wrap {
+	float: left;
+	line-height: 0.82;
+	margin-right: 16rpx;
+	margin-top: 6rpx;
+	margin-bottom: 0;
+}
+
+.drop-cap-num {
+	font-size: 82rpx;
+	font-weight: 500;
+	color: #111111;
+	font-family: -apple-system, "SimSun", "Songti SC", serif;
+}
+
+/* 流式行内上标小节号 */
+.sup-verse-num {
+	font-size: 20rpx;
+	vertical-align: super;
+	color: #8c9399;
+	margin-left: 6rpx;
+	margin-right: 4rpx;
+	font-weight: normal;
+	line-height: 1;
+}
+
+/* 经典和合本专名下划线 (人名/地名专名线) */
+.proper-noun {
+	border-bottom: 2rpx solid #262626;
+	padding-bottom: 2rpx;
+}
+
+/* 经文正文可选中：整节作为一个选区，长按唤起系统"复制"菜单 */
+.verse-selectable,
+.verse-selectable .flow-text-span {
+	-webkit-user-select: text;
+	-moz-user-select: text;
+	user-select: text;
+}
+
+/* 诗歌体缩进排版 (旧约预言诗引用) */
+.paper-poetry-box {
+	margin: 28rpx 0;
+	padding-left: 48rpx;
+	padding-right: 20rpx;
+}
+
+.poetry-line {
+	display: flex;
+	align-items: flex-start;
+	margin-bottom: 14rpx;
+}
+
+.poetry-verse-num {
+	font-size: 20rpx;
+	vertical-align: super;
+	color: #8c9399;
+	margin-right: 8rpx;
+	margin-top: 4rpx;
+	line-height: 1;
+}
+
+.poetry-text-content {
+	font-size: 32rpx;
+	line-height: 1.85;
+	color: #262626;
+	letter-spacing: 1rpx;
+}
+
+/* ==================== 2. 按节展示逐节排版系统 ==================== */
+.verse-reading-area {
+	padding-top: 10rpx;
+}
+
+.verse-wrapper {
+	margin-bottom: 24rpx;
+}
+
+.verse-mode-title {
+	margin-top: 36rpx;
+	margin-bottom: 20rpx;
+}
+
+.verse-container {
+	margin-bottom: 20rpx;
+	display: flex;
+	align-items: flex-start;
+}
+
+.verse-number {
+	min-width: 56rpx;
+	font-size: 24rpx;
+	color: #8c9399;
+	font-weight: bold;
+	margin-right: 18rpx;
+	margin-top: 8rpx;
+	text-align: center;
+}
+
+.verse-text-flow {
+	flex: 1;
+	font-size: 34rpx;
+	color: #262626;
+	line-height: 1.85;
+	text-align: justify;
+}
+
+/* 底部工具栏 */
+.bottom-toolbar {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	display: flex;
+	align-items: center;
+	justify-content: space-around;
+	padding: 20rpx 0;
+	padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+	background: #fff;
+	border-top: 1rpx solid #e0e0e0;
+	height: 160rpx;
+	box-sizing: border-box;
+	z-index: 100;
+	transform: translateY(0);
+	transition: transform 0.3s ease;
+}
+
+.bottom-toolbar.toolbar-hidden {
+	transform: translateY(100%);
+}
+
+.toolbar-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+}
+
+.toolbar-icon {
+	font-size: 36rpx;
+	color: #666;
+	margin-bottom: 8rpx;
+}
+
+.toolbar-text {
+	font-size: 20rpx;
+	color: #666;
+}
+
+.toolbar-share-btn {
+	background: transparent;
+	border: none;
+	padding: 0;
+	margin: 0;
+	line-height: normal;
+	font-size: inherit;
+	color: inherit;
+	border-radius: 0;
+}
+
+.toolbar-share-btn::after {
+	border: none;
+}
+
+.toolbar-item.is-active-btn .toolbar-icon {
+	color: #2d5a3f;
+	font-weight: bold;
+}
+
+.toolbar-item.is-active-btn .toolbar-text {
+	color: #2d5a3f;
+	font-weight: bold;
+}
+
+/* 顶部搜索浮动栏 */
+.search-floating-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10rpx 24rpx 14rpx 24rpx;
+	background: #ffffff;
+	border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.03);
+	gap: 16rpx;
+	box-sizing: border-box;
+}
+
+.search-input-wrap {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	background: #f1f4f6;
+	border-radius: 32rpx;
+	padding: 8rpx 20rpx;
+	height: 64rpx;
+	box-sizing: border-box;
+}
+
+.search-icon {
+	font-size: 26rpx;
+	margin-right: 12rpx;
+	opacity: 0.6;
+}
+
+.search-input {
+	flex: 1;
+	font-size: 26rpx;
+	color: #2c3e50;
+	height: 100%;
+}
+
+.search-clear-btn {
+	font-size: 28rpx;
+	color: #95a5a6;
+	padding: 0 8rpx;
+	line-height: 1;
+}
+
+.search-actions {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+}
+
+.search-counter {
+	font-size: 22rpx;
+	color: #7f8c8d;
+	min-width: 60rpx;
+	text-align: right;
+}
+
+.search-nav-btn {
+	width: 52rpx;
+	height: 52rpx;
+	line-height: 48rpx;
+	padding: 0;
+	border-radius: 50%;
+	background: #eef2f5;
+	color: #2c3e50;
+	font-size: 32rpx;
+	font-weight: bold;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+}
+
+.search-nav-btn::after {
+	border: none;
+}
+
+.search-nav-btn[disabled] {
+	opacity: 0.35;
+	background: #f5f5f5;
+}
+
+.search-close-text {
+	font-size: 26rpx;
+	color: #2d5a3f;
+	font-weight: 500;
+	padding: 6rpx 12rpx;
+}
+
+/* 经文搜索高亮与选中聚焦样式 */
+.search-highlight {
+	background-color: #ffecb3;
+	color: #5d4037;
+	border-radius: 4rpx;
+	padding: 0 2rpx;
+	font-weight: 600;
+}
+
+.search-active-target {
+	background-color: #ff9800 !important;
+	color: #ffffff !important;
+	border-radius: 4rpx;
+	padding: 0 4rpx;
+	font-weight: bold;
+}
+
+.verse-active-matched {
+	background: rgba(255, 152, 0, 0.08) !important;
+	border-radius: 8rpx;
+	transition: background 0.3s;
+}
+
+.sup-active-matched {
+	color: #e65100 !important;
+	font-weight: bold !important;
+}
+
+.verse-anchor {
+	display: inline-block;
+	width: 0;
+	height: 0;
+	visibility: hidden;
+}
+
+/* 新增：用于加载和错误提示的样式 */
+.feedback-container {
+	flex: 1;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 100rpx;
+	background: #f8f8f8;
+}
+
+.feedback-text {
+	font-size: 32rpx;
+	color: #999;
+}
+
+/* 经文底部读完打卡区域 */
+.reading-finish-section {
+	margin: 60rpx 0 60rpx 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 28rpx;
+}
+
+.finish-chapter-btn {
+	background: linear-gradient(135deg, #c58b43, #a46724);
+	color: #ffffff;
+	border-radius: 40rpx;
+	height: 80rpx;
+	line-height: 80rpx;
+	font-size: 28rpx;
+	font-weight: bold;
+	padding: 0 48rpx;
+	box-shadow: 0 4rpx 12rpx rgba(180, 115, 45, 0.3);
+}
+
+/* 章节便捷翻页导航行 (上一章 / 下一章) */
+.chapter-nav-row {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 36rpx;
+	width: 100%;
+}
+
+.nav-page-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 68rpx;
+	line-height: 68rpx;
+	padding: 0 42rpx;
+	border-radius: 34rpx;
+	font-size: 26rpx;
+	font-weight: 500;
+	background: #e6edf2;
+	color: #4a5c68;
+	border: 1rpx solid #cddce6;
+	transition: all 0.2s ease;
+	box-sizing: border-box;
+}
+
+.nav-page-btn:active {
+	background: #d8e4ec;
+	transform: scale(0.98);
+}
+
+.nav-page-btn::after {
+	border: none;
+}
+
+.nav-arrow {
+	font-size: 32rpx;
+	line-height: 1;
+	margin: 0 6rpx;
+}
+
+.finish-chapter-btn.btn-is-checked {
+	background: #f1f3f5;
+	color: #868e96;
+	box-shadow: none;
+}
+
+.finish-chapter-btn::after {
+	border: none;
+}
+
+/* 25 分钟番茄钟完成弹窗 */
+.timer-modal-mask {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 9999;
+}
+
+.timer-modal-body {
+	background: #ffffff;
+	width: 80%;
+	max-width: 600rpx;
+	border-radius: 24rpx;
+	padding: 48rpx 36rpx;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+}
+
+.timer-modal-icon {
+	font-size: 72rpx;
+	margin-bottom: 16rpx;
+}
+
+.timer-modal-title {
+	font-size: 36rpx;
+	font-weight: bold;
+	color: #2c2523;
+	margin-bottom: 12rpx;
+}
+
+.timer-modal-desc {
+	font-size: 26rpx;
+	color: #7b6d64;
+	line-height: 1.5;
+	margin-bottom: 36rpx;
+}
+
+.timer-modal-actions {
+	display: flex;
+	gap: 20rpx;
+	width: 100%;
+}
+
+.modal-act-btn {
+	flex: 1;
+	height: 76rpx;
+	line-height: 76rpx;
+	border-radius: 38rpx;
+	font-size: 26rpx;
+	font-weight: bold;
+}
+
+.modal-act-btn.outline {
+	background: #f1ede6;
+	color: #7b6d64;
+}
+
+.modal-act-btn.primary {
+	background: #c58b43;
+	color: #ffffff;
+}
+
+.modal-act-btn::after {
+	border: none;
+}
+
+/* 审核伪装：风物美文随笔阅读样式 */
+.audit-article-view {
+	width: 100vw;
+	min-height: 100vh;
+	background-color: #f7f6f2;
+	display: flex;
+	flex-direction: column;
+}
+
+.audit-article-scroll {
+	flex: 1;
+	height: calc(100vh - 120rpx);
+	padding-bottom: 80rpx;
+}
+
+.article-banner-img {
+	width: 100%;
+	height: 420rpx;
+	display: block;
+}
+
+.article-body-card {
+	margin: -40rpx 32rpx 40rpx 32rpx;
+	position: relative;
+	z-index: 2;
+	background: #ffffff;
+	border-radius: 28rpx;
+	padding: 44rpx 36rpx;
+	box-shadow: 0 12rpx 36rpx rgba(0, 0, 0, 0.06);
+	display: flex;
+	flex-direction: column;
+}
+
+.article-h1 {
+	font-size: 40rpx;
+	font-weight: bold;
+	color: #2c2523;
+	line-height: 1.4;
+	margin-bottom: 20rpx;
+}
+
+.article-meta-row {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
+	padding-bottom: 24rpx;
+	margin-bottom: 32rpx;
+	border-bottom: 1rpx solid #f0ede6;
+}
+
+.article-author {
+	font-size: 24rpx;
+	color: #c58b43;
+	font-weight: 600;
+	background: rgba(197, 139, 67, 0.1);
+	padding: 4rpx 16rpx;
+	border-radius: 8rpx;
+}
+
+.article-time {
+	font-size: 24rpx;
+	color: #9c9289;
+}
+
+.article-content-text {
+	display: flex;
+	flex-direction: column;
+	gap: 28rpx;
+	margin-bottom: 48rpx;
+}
+
+.article-content-text .p-text {
+	font-size: 32rpx;
+	color: #4a4039;
+	line-height: 1.85;
+	text-align: justify;
+	letter-spacing: 1rpx;
+}
+
+.return-home-btn {
+	width: 100%;
+	height: 88rpx;
+	line-height: 88rpx;
+	background: linear-gradient(135deg, #44634f, #2c4436);
+	color: #ffffff;
+	font-size: 30rpx;
+	font-weight: 600;
+	border-radius: 44rpx;
+	text-align: center;
+	border: none;
+	box-shadow: 0 8rpx 20rpx rgba(44, 68, 54, 0.25);
+}
+
+.return-home-btn::after {
+	border: none;
+}

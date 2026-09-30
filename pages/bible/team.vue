@@ -226,30 +226,114 @@
 					</view>
 				</view>
 
-				<!-- 实时打卡动态墙 -->
+				<!-- 实时打卡动态墙（智能聚合模式） -->
 				<view class="section-card">
 					<view class="section-title-row">
 						<text class="sec-title">打卡动态流</text>
+						<text class="sec-sub">同日同人自动合并</text>
 					</view>
 
 					<view class="activity-feed">
-						<view v-for="act in dashboard.activities" :key="act.id" class="feed-item">
-							<image class="feed-avatar" :src="getAvatarDisplayUrl(act.avatarUrl)" mode="aspectFill"></image>
-							<view class="feed-content">
-								<view class="feed-main-row">
-									<text class="feed-user">{{ act.nickname }}</text>
-									<text class="feed-action">{{ formatFeedAction(act.action) }}</text>
+						<view v-for="act in aggregatedActivities" :key="act.openid + '|' + act.dateKey" class="feed-item" :class="{ 'is-expanded': expandedActivities[act.openid + '|' + act.dateKey] }">
+							<!-- 顶部用户信息与操作栏 -->
+							<view class="feed-card-header">
+								<image class="feed-avatar" :src="getAvatarDisplayUrl(act.avatarUrl)" mode="aspectFill"></image>
+								<view class="feed-user-meta">
+									<view class="user-line">
+										<text class="feed-user">{{ act.nickname }}</text>
+										<text v-if="act.checkinCount > 1" class="checkin-badge">🔥 {{ act.checkinCount }}次打卡</text>
+									</view>
+									<view class="sub-line">
+										<text class="feed-time">{{ act.displayTime }}</text>
+										<text class="feed-dot">·</text>
+										<text class="feed-words">+{{ act.totalWords.toLocaleString() }} 字</text>
+									</view>
 								</view>
-								<view class="feed-meta-row">
-									<text class="feed-time">{{ act.time }}</text>
-									<text class="feed-dot">·</text>
-									<text class="feed-words">+{{ act.words }} 字</text>
+								<view class="feed-like-btn" @click.stop="likeAggregatedAct(act)">
+									<text class="like-icon">👍</text>
+									<text class="like-count" v-if="act.likes > 0">{{ act.likes }}</text>
 								</view>
 							</view>
-							<view class="feed-like-btn" @click="likeAct(act.id)">
-								<text class="like-icon">👍</text>
-								<text class="like-count" v-if="act.likes > 0">{{ act.likes }}</text>
+
+							<!-- 中部经文微胶囊展示区 -->
+							<view class="feed-card-body">
+								<!-- 折叠状态下的胶囊列表 -->
+								<view v-if="!expandedActivities[act.openid + '|' + act.dateKey]" class="chapter-chips-row">
+									<text 
+										v-for="(chap, cIdx) in getPreviewChapters(act.chapters)" 
+										:key="cIdx" 
+										class="chapter-chip"
+									>{{ chap }}</text>
+									<text v-if="act.chapters.length > 3" class="more-chip" @click="toggleExpand(act)">
+										+{{ act.chapters.length - 3 }}章 ▾
+									</text>
+								</view>
+
+<!-- 展开状态下的全量胶囊与明细 -->
+							<view v-else class="feed-expanded-content">
+								<view class="chapter-chips-row expanded-chips">
+									<text 
+										v-for="(chap, cIdx) in getUniqueChapters(act.chapters)" 
+										:key="cIdx" 
+										class="chapter-chip active-chip"
+									>{{ chap }}</text>
+								</view>
+
+								<!-- 单条打卡时间线 -->
+								<view v-if="act.individualCheckins && act.individualCheckins.length > 0" class="checkin-timeline">
+									<view v-for="(checkin, idx) in act.individualCheckins" :key="checkin.id || idx" class="timeline-item">
+										<view class="timeline-marker"></view>
+										<view class="timeline-content">
+											<view class="timeline-header">
+												<text class="timeline-chapter" v-if="checkin.chapter">{{ checkin.chapter }}</text>
+												<text class="timeline-chapter" v-else>读经打卡</text>
+												<text class="timeline-words">+{{ checkin.words.toLocaleString() }} 字</text>
+											</view>
+											<view class="timeline-meta">
+												<text class="timeline-time">{{ formatTimelineTime(checkin.time || checkin.createTime) }}</text>
+												<view class="timeline-actions" v-if="checkin.reflection || checkin.likes > 0">
+													<text class="timeline-reflection-icon" v-if="checkin.reflection">💭</text>
+													<text class="timeline-likes" v-if="checkin.likes > 0">👍 {{ checkin.likes }}</text>
+												</view>
+											</view>
+											<view v-if="checkin.reflection" class="timeline-reflection">
+												<text class="quote-mark">“</text>
+												<text class="reflection-text">{{ checkin.reflection }}</text>
+											</view>
+										</view>
+									</view>
+								</view>
+
+								<!-- 随想感悟气泡（汇总） -->
+								<view v-if="act.reflections && act.reflections.length > 0" class="reflections-box">
+									<view v-for="(reflection, rIdx) in act.reflections" :key="rIdx" class="reflection-bubble">
+										<text class="quote-mark">“</text>
+										<text class="reflection-text">{{ reflection }}</text>
+									</view>
+								</view>
 							</view>
+
+								<!-- 单条打卡且有心得时的展示 -->
+								<view v-if="!expandedActivities[act.openid + '|' + act.dateKey] && act.reflections.length > 0" class="reflections-box">
+									<view class="reflection-bubble">
+										<text class="quote-mark">“</text>
+										<text class="reflection-text">{{ act.reflections[0] }}</text>
+									</view>
+								</view>
+							</view>
+
+							<!-- 底部收起/展开微呼吸条 (仅在多章时呈现) -->
+							<view 
+								v-if="act.checkinCount > 1 || act.chapters.length > 3 || (act.reflections && act.reflections.length > 1)" 
+								class="expand-action-bar" 
+								@click="toggleExpand(act)"
+							>
+								<text class="expand-action-txt">{{ expandedActivities[act.openid + '|' + act.dateKey] ? '收起详情 ▴' : ('展开查看全部 ' + act.chapters.length + ' 卷 ▾') }}</text>
+							</view>
+						</view>
+
+						<view v-if="aggregatedActivities.length === 0" class="feed-empty">
+							<text class="empty-txt">暂无打卡动态，快去读经打卡吧～</text>
 						</view>
 					</view>
 				</view>
@@ -400,18 +484,93 @@ export default {
 			joinCode: '',
 			navBarTop: 20,
 			navBarHeight: 32,
-			capsuleWidth: 95
+			capsuleWidth: 95,
+			expandedActivities: {}
 		};
 	},
 
-	computed: {
-		isLoggedIn() {
-			return this.currentUser && this.currentUser.status === LOGIN_STATUS.LOGGED_IN;
+computed: {
+			isLoggedIn() {
+				return this.currentUser && this.currentUser.status === LOGIN_STATUS.LOGGED_IN;
+			},
+			navBarStyle() {
+				return `box-sizing:border-box; padding-top:${this.navBarTop}px; padding-bottom:8px; height:${this.navBarTop + this.navBarHeight + 8}px; padding-left:30rpx; padding-right:${this.capsuleWidth}px;`;
+			},
+			aggregatedActivities() {
+				if (!this.dashboard.activities || this.dashboard.activities.length === 0) {
+					return [];
+				}
+				
+				const groups = new Map();
+				const getActTs = (ct) => {
+					if (!ct) return Date.now();
+					let d = new Date(ct);
+					if (isNaN(d.getTime())) return Date.now();
+					return (typeof ct === 'string' && ct.endsWith('Z')) ? d.getTime() + 8 * 3600 * 1000 : d.getTime();
+				};
+				
+				this.dashboard.activities.forEach(act => {
+					const dateKey = act.time.split(' ')[0];
+					const key = `${act.openid}|${dateKey}`;
+					
+					if (!groups.has(key)) {
+						groups.set(key, {
+							openid: act.openid,
+							nickname: act.nickname,
+							avatarUrl: act.avatarUrl,
+							dateKey,
+							displayTime: act.time,
+							totalWords: 0,
+							chapters: [],
+							checkinCount: 0,
+							reflections: [],
+							likes: 0,
+							latestTimestamp: getActTs(act.createTime),
+							individualCheckins: []
+						});
+					}
+					
+					const group = groups.get(key);
+					group.totalWords += act.words || 0;
+					group.checkinCount += 1;
+					
+					const checkin = {
+						id: act.id,
+						time: act.time,
+						createTime: act.createTime,
+						words: act.words || 0,
+						action: act.action,
+						reflection: act.reflection,
+						likes: act.likes || 0,
+						chapter: null
+					};
+					
+					if (act.action) {
+						const chapterMatch = act.action.match(/《(.*?)》/);
+						if (chapterMatch) {
+							checkin.chapter = chapterMatch[1];
+							group.chapters.push(chapterMatch[1]);
+						}
+					}
+					if (act.reflection) {
+						group.reflections.push(act.reflection);
+					}
+					group.likes += act.likes || 0;
+					if (act.createTime) {
+						const ts = getActTs(act.createTime);
+						if (ts > group.latestTimestamp) {
+							group.latestTimestamp = ts;
+						}
+					}
+					
+					group.individualCheckins.push(checkin);
+				});
+				
+				return Array.from(groups.values())
+					.sort((a, b) => b.latestTimestamp - a.latestTimestamp)
+					.slice(0, 15);
+			}
 		},
-		navBarStyle() {
-			return `box-sizing:border-box; padding-top:${this.navBarTop}px; padding-bottom:8px; height:${this.navBarTop + this.navBarHeight + 8}px; padding-left:30rpx; padding-right:${this.capsuleWidth}px;`;
-		}
-	},
 
 	onLoad(options) {
 		this.isAudit = isAuditMode();
@@ -501,6 +660,128 @@ export default {
 				.replace(/\(\d+字\).*$/, '')
 				.trim();
 			return `读完《${chapter}》`;
+		},
+
+		formatAggregatedAction(act) {
+			if (act.checkinCount > 1) {
+				return `今日共打卡 ${act.checkinCount} 次，读经 ${act.chapters.length > 0 ? act.chapters.length + ' 段经文' : ''}`;
+			}
+			return act.chapters.length > 0 ? `读完《${act.chapters[0]}》` : '读完圣经经文';
+		},
+
+		formatChapters(chapters) {
+			const unique = [...new Set(chapters)];
+			if (unique.length <= 3) {
+				return unique.map(c => `《${c}》`).join('、');
+			}
+			return unique.slice(0, 3).map(c => `《${c}》`).join('、') + ` 等${unique.length}段`;
+		},
+
+		likeAggregatedAct(act) {
+			if (!this.dashboard.activities || this.dashboard.activities.length === 0) return;
+			
+			const dateKey = act.dateKey;
+			const openid = act.openid;
+			
+			this.dashboard.activities.forEach(activity => {
+				const activityDateKey = activity.time.split(' ')[0];
+				if (activity.openid === openid && activityDateKey === dateKey) {
+					userTeamManager.likeActivity(activity.id);
+				}
+			});
+			
+			this.refreshTeamData();
+			uni.showToast({ title: '点赞鼓励 +1', icon: 'none' });
+		},
+
+		toggleExpand(act) {
+			const key = act.openid + '|' + act.dateKey;
+			const isExpanded = !this.expandedActivities[key];
+			// 兼容 Vue 2/Vue 3 跨版本响应式机制
+			if (typeof this.$set === 'function' && typeof this.$delete === 'function') {
+				if (isExpanded) {
+					this.$set(this.expandedActivities, key, true);
+				} else {
+					this.$delete(this.expandedActivities, key);
+				}
+			} else {
+				this.expandedActivities = {
+					...this.expandedActivities,
+					[key]: isExpanded
+				};
+			}
+		},
+
+		getPreviewChapters(chapters) {
+			const unique = [...new Set(chapters || [])];
+			return unique.slice(0, 3).map(c => `《${c}》`);
+		},
+
+		getUniqueChapters(chapters) {
+			const unique = [...new Set(chapters || [])];
+			return unique.map(c => `《${c}》`);
+		},
+
+		formatTimelineTime(createTime) {
+			if (!createTime) return '';
+			let s = String(createTime).trim();
+			// 如果已经是格式化好的相对时间（如“今天 14:53”或“昨天 14:53”），直接返回
+			if (s.includes('天') || /^\d{2}-\d{2}\s+\d{2}:\d{2}$/.test(s)) {
+				return s;
+			}
+			let d = null;
+			if (createTime instanceof Date) {
+				d = isNaN(createTime.getTime()) ? null : createTime;
+			} else {
+				let parsed = new Date(s);
+				if (!isNaN(parsed.getTime())) {
+					// 云端返回带 Z 的 ISO 串补偿 8 小时还原真实北京时间打卡时刻
+					if (s.endsWith('Z')) {
+						parsed = new Date(parsed.getTime() + 8 * 3600 * 1000);
+					}
+					d = parsed;
+				} else {
+					const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+					if (m) {
+						d = new Date(
+							parseInt(m[1], 10),
+							parseInt(m[2], 10) - 1,
+							parseInt(m[3], 10),
+							parseInt(m[4] || '0', 10),
+							parseInt(m[5] || '0', 10),
+							parseInt(m[6] || '0', 10)
+						);
+					}
+				}
+			}
+			if (!d) return s;
+
+			const pad = (n) => String(n).padStart(2, '0');
+			const h = pad(d.getHours());
+			const m = pad(d.getMinutes());
+			const timeStr = `${h}:${m}`;
+
+			const now = new Date();
+			const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+			const targetStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+			const dayDiff = Math.round((todayStart - targetStart) / (24 * 3600 * 1000));
+
+			if (dayDiff === 0) {
+				return `今天 ${timeStr}`;
+			} else if (dayDiff === 1) {
+				return `昨天 ${timeStr}`;
+			} else if (dayDiff === 2) {
+				return `前天 ${timeStr}`;
+			} else if (d.getFullYear() === now.getFullYear()) {
+				return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${timeStr}`;
+			} else {
+				return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${timeStr}`;
+			}
+		},
+
+		formatAllChapters(chapters) {
+			const unique = [...new Set(chapters)];
+			return unique.map(c => `《${c}》`).join('、');
 		},
 
 		getAvatarDisplayUrl(url) {
@@ -1276,89 +1557,116 @@ export default {
 	margin-top: 4rpx;
 }
 
-/* 动态流 */
+/* 动态流现代精致卡片设计 */
 .activity-feed {
 	display: flex;
 	flex-direction: column;
-	gap: 16rpx;
+	gap: 20rpx;
 }
 
 .feed-item {
+	background: #ffffff;
+	border-radius: 20rpx;
+	padding: 24rpx;
+	box-shadow: 0 4rpx 16rpx rgba(140, 123, 111, 0.06);
+	border: 1rpx solid #f2ece4;
 	display: flex;
-	align-items: center;
-	padding: 16rpx 0;
-	border-bottom: 1rpx dashed #eee8df;
+	flex-direction: column;
+	transition: all 0.25s ease;
 }
 
-.feed-item:last-child {
-	border-bottom: none;
+.feed-item.is-expanded {
+	background: #fffdfa;
+	border-color: #ebdcc9;
+	box-shadow: 0 6rpx 20rpx rgba(197, 139, 67, 0.1);
+}
+
+/* 顶部用户栏 */
+.feed-card-header {
+	display: flex;
+	align-items: center;
+	width: 100%;
 }
 
 .feed-avatar {
-	width: 60rpx;
-	height: 60rpx;
-	border-radius: 30rpx;
+	width: 76rpx;
+	height: 76rpx;
+	border-radius: 38rpx;
 	margin-right: 16rpx;
+	border: 2rpx solid #f0e8df;
+	flex-shrink: 0;
 }
 
-.feed-content {
+.feed-user-meta {
 	flex: 1;
+	min-width: 0;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
-	min-width: 0;
 }
 
-.feed-main-row {
+.user-line {
 	display: flex;
 	align-items: center;
-	flex-wrap: wrap;
-	gap: 10rpx;
+	gap: 12rpx;
 }
 
 .feed-user {
-	font-size: 26rpx;
-	font-weight: bold;
+	font-size: 28rpx;
+	font-weight: 700;
 	color: #2c2523;
+	max-width: 320rpx;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-.feed-action {
-	font-size: 24rpx;
-	color: #5c4e46;
+.checkin-badge {
+	font-size: 20rpx;
+	font-weight: 600;
+	background: #fff3e6;
+	color: #d9480f;
+	padding: 2rpx 12rpx;
+	border-radius: 20rpx;
+	border: 1rpx solid #ffd8a8;
 }
 
-.feed-meta-row {
+.sub-line {
 	display: flex;
 	align-items: center;
-	gap: 10rpx;
-	margin-top: 6rpx;
+	gap: 8rpx;
+	margin-top: 4rpx;
 }
 
 .feed-time {
 	font-size: 22rpx;
 	color: #a4968c;
-	white-space: nowrap;
 }
 
 .feed-dot {
 	font-size: 20rpx;
-	color: #d1c7bc;
+	color: #d8cebe;
 }
 
 .feed-words {
 	font-size: 22rpx;
 	color: #b3732d;
 	font-weight: 600;
-	white-space: nowrap;
 }
 
 .feed-like-btn {
 	display: flex;
 	align-items: center;
-	padding: 8rpx 14rpx;
+	padding: 8rpx 16rpx;
 	background: #f8f6f2;
-	border-radius: 20rpx;
+	border-radius: 24rpx;
 	margin-left: 12rpx;
+	flex-shrink: 0;
+	transition: background 0.2s;
+}
+
+.feed-like-btn:active {
+	background: #ede6dc;
 }
 
 .like-icon {
@@ -1366,9 +1674,220 @@ export default {
 }
 
 .like-count {
+	font-size: 22rpx;
+	color: #8c7b6f;
+	margin-left: 6rpx;
+	font-weight: 600;
+}
+
+/* 中部经文与随想 */
+.feed-card-body {
+	margin-top: 16rpx;
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+}
+
+.chapter-chips-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10rpx;
+	align-items: center;
+}
+
+.chapter-chip {
+	font-size: 22rpx;
+	color: #5c4e46;
+	background: #f7f3ec;
+	padding: 6rpx 16rpx;
+	border-radius: 12rpx;
+	border: 1rpx solid #ece4d8;
+	font-weight: 500;
+}
+
+.chapter-chip.active-chip {
+	background: #fdf5ea;
+	color: #9c6018;
+	border-color: #f1dfc5;
+}
+
+.more-chip {
+	font-size: 20rpx;
+	color: #c58b43;
+	background: #fff8ee;
+	padding: 6rpx 14rpx;
+	border-radius: 12rpx;
+	border: 1rpx dashed #dcb581;
+	font-weight: 600;
+}
+
+/* 随想感悟气泡框 */
+.reflections-box {
+	display: flex;
+	flex-direction: column;
+	gap: 10rpx;
+	margin-top: 4rpx;
+}
+
+.reflection-bubble {
+	position: relative;
+	background: #fcf9f4;
+	border-radius: 12rpx;
+	padding: 14rpx 16rpx 14rpx 36rpx;
+	border-left: 4rpx solid #c58b43;
+}
+
+.quote-mark {
+	position: absolute;
+	left: 12rpx;
+	top: 8rpx;
+	font-size: 26rpx;
+	color: #c58b43;
+	font-family: Georgia, serif;
+	line-height: 1;
+}
+
+.reflection-text {
+	font-size: 22rpx;
+	color: #5c4e46;
+	line-height: 1.5;
+}
+
+/* 底部展开呼吸条 */
+.expand-action-bar {
+	margin-top: 18rpx;
+	padding: 10rpx 0 2rpx 0;
+	border-top: 1rpx dashed #f0e8de;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.expand-action-txt {
+	font-size: 22rpx;
+	color: #b3732d;
+	font-weight: 600;
+}
+
+.feed-empty {
+	padding: 60rpx 0;
+	text-align: center;
+}
+
+.empty-txt {
+	font-size: 26rpx;
+	color: #a4968c;
+}
+
+/* 打卡时间线样式 */
+.checkin-timeline {
+	margin-top: 12rpx;
+	padding-left: 40rpx;
+	border-left: 2rpx dashed #f0e8de;
+}
+
+.timeline-item {
+	position: relative;
+	padding: 16rpx 0 16rpx 24rpx;
+}
+
+.timeline-item:last-child {
+	padding-bottom: 0;
+}
+
+.timeline-marker {
+	position: absolute;
+	left: -51rpx;
+	top: 20rpx;
+	width: 20rpx;
+	height: 20rpx;
+	border-radius: 50%;
+	background: #c58b43;
+	border: 4rpx solid #ffffff;
+	box-shadow: 0 0 0 2rpx #c58b43;
+}
+
+.timeline-content {
+	background: #fcf9f4;
+	border-radius: 14rpx;
+	padding: 16rpx;
+	border: 1rpx solid #f2ece4;
+}
+
+.timeline-header {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	margin-bottom: 8rpx;
+	flex-wrap: wrap;
+}
+
+.timeline-chapter {
+	font-size: 24rpx;
+	font-weight: 600;
+	color: #5c4e46;
+	background: #fdf5ea;
+	padding: 4rpx 12rpx;
+	border-radius: 10rpx;
+	border: 1rpx solid #f1dfc5;
+}
+
+.timeline-words {
+	font-size: 22rpx;
+	color: #b3732d;
+	font-weight: 600;
+	margin-left: auto;
+}
+
+.timeline-meta {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.timeline-time {
+	font-size: 20rpx;
+	color: #a4968c;
+	font-variant-numeric: tabular-nums;
+}
+
+.timeline-actions {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+}
+
+.timeline-reflection-icon {
+	font-size: 20rpx;
+}
+
+.timeline-likes {
 	font-size: 20rpx;
 	color: #8c7b6f;
-	margin-left: 4rpx;
+}
+
+.timeline-reflection {
+	margin-top: 12rpx;
+	padding-top: 12rpx;
+	border-top: 1rpx dashed #f0e8de;
+	display: flex;
+	align-items: flex-start;
+	gap: 8rpx;
+}
+
+.timeline-reflection .quote-mark {
+	font-size: 24rpx;
+	color: #c58b43;
+	font-family: Georgia, serif;
+	line-height: 1.5;
+	margin-top: 2rpx;
+}
+
+.timeline-reflection .reflection-text {
+	font-size: 22rpx;
+	color: #5c4e46;
+	line-height: 1.5;
+	flex: 1;
 }
 
 /* 弹窗通用样式 */

@@ -54,7 +54,7 @@
 					<view class="search-entry-btn" @click.stop="goToSearch">
 						<text class="search-entry-icon">🔍</text>
 					</view>
-					<view class="plan-entry-btn" @click="goToPlan">
+                    <view class="plan-entry-btn" @click="goToPlan">
 						<text class="plan-entry-icon">📅</text>
 						<text class="plan-entry-text">计划</text>
 					</view>
@@ -485,6 +485,8 @@ export default {
 	border: 1rpx solid #ffd8a8;
 	padding: 8rpx 18rpx;
 	border-radius: 30rpx;
+	white-space: nowrap;
+	flex-shrink: 0;
 }
 
 .plan-entry-icon {

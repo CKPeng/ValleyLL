@@ -35,12 +35,69 @@ const TEAM_STORAGE_KEY = 'VALLEY_BIBLE_TEAM_DATA_V1';
 // 云端 API 基础路径 (对接已部署的轻量 Node.js 微服务)
 const API_BASE = BIBLE_API_BASE;
 
+// 将 Date 或时间串格式化为带相对日期的友好显示（今天 HH:mm / 昨天 HH:mm / 前天 HH:mm / MM-DD HH:mm）
+function formatActivityTime(createTime) {
+  if (!createTime) return '';
+  let d = null;
+  if (createTime instanceof Date) {
+    d = Number.isNaN(createTime.getTime()) ? null : createTime;
+  } else if (typeof createTime === 'string') {
+    const raw = createTime.trim();
+    if (raw) {
+      let parsed = new Date(raw);
+      if (!Number.isNaN(parsed.getTime())) {
+        // 云端返回带 Z 的 ISO 串（因数据库落库按 UTC CURRENT_TIMESTAMP 导致少存了 8 小时），补偿 8 小时还原真实北京时间打卡时刻
+        if (raw.endsWith('Z')) {
+          parsed = new Date(parsed.getTime() + 8 * 3600 * 1000);
+        }
+        d = parsed;
+      } else {
+        const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+        if (m) {
+          d = new Date(
+            parseInt(m[1], 10),
+            parseInt(m[2], 10) - 1,
+            parseInt(m[3], 10),
+            parseInt(m[4] || '0', 10),
+            parseInt(m[5] || '0', 10),
+            parseInt(m[6] || '0', 10)
+          );
+        }
+      }
+    }
+  }
+
+  if (!d) return getTimeString();
+
+  const pad = (n) => String(n).padStart(2, '0');
+  const h = pad(d.getHours());
+  const m = pad(d.getMinutes());
+  const timeStr = `${h}:${m}`;
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const targetStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const dayDiff = Math.round((todayStart - targetStart) / (24 * 3600 * 1000));
+
+  if (dayDiff === 0) {
+    return `今天 ${timeStr}`;
+  } else if (dayDiff === 1) {
+    return `昨天 ${timeStr}`;
+  } else if (dayDiff === 2) {
+    return `前天 ${timeStr}`;
+  } else if (d.getFullYear() === now.getFullYear()) {
+    return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${timeStr}`;
+  } else {
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${timeStr}`;
+  }
+}
+
 // 获取当前时间格式 HH:mm
 function getTimeString() {
   const d = new Date();
   const h = String(d.getHours()).padStart(2, '0');
   const m = String(d.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
+  return `今天 ${h}:${m}`;
 }
 
 // 获取今天日期字符串 YYYY-MM-DD
@@ -467,7 +524,7 @@ class UserTeamManager {
         role: m.role,
         todayWords: m.todayWords,
         weekWords: m.weekWords,
-        streakDays: 1,
+        streakDays: typeof m.streakDays !== 'undefined' ? m.streakDays : (m.todayWords > 0 ? 1 : 0),
         isFinishedToday: m.isFinishedToday
       }));
 
@@ -479,7 +536,8 @@ class UserTeamManager {
         avatarUrl: normalizeAvatarUrl(a.avatar),
         action: `读完《${a.chaptersFinished || '圣经经文'}》`,
         words: a.wordsRead,
-        time: getTimeString(),
+        time: formatActivityTime(a.createTime),
+        createTime: a.createTime,
         reflection: a.reflection,
         likes: 0
       }));
@@ -558,7 +616,7 @@ class UserTeamManager {
 
         myMember.todayWords = todayWords;
         myMember.weekWords = weeklySummary.weekFinishedWords;
-        myMember.streakDays = planData.streakDays || 1;
+        myMember.streakDays = typeof planData.streakDays !== 'undefined' ? planData.streakDays : 0;
         myMember.isFinishedToday = todayWords >= (this.team.dailyTargetWords || 5000);
       }
     }
@@ -603,7 +661,8 @@ class UserTeamManager {
         avatarUrl: normalizeAvatarUrl(this.user.avatarUrl),
         action: `读完《${chapterName}》`,
         words: chapterWords,
-        time: getTimeString(),
+        time: formatActivityTime(new Date()),
+        createTime: new Date().toISOString(),
         reflection: reflection,
         likes: 0
       };
