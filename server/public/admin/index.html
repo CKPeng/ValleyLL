@@ -10,10 +10,13 @@
     <script src="https://unpkg.com/element-plus"></script>
     <style>
         body { margin: 0; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f5f7fa; }
-        #app { max-width: 900px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1); }
+        #app { max-width: 1050px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1); }
         .login-box { max-width: 400px; margin: 100px auto; text-align: center; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ebeef5; padding-bottom: 20px; margin-bottom: 20px; }
-        .user-avatar { width: 40px; height: 40px; border-radius: 50%; vertical-align: middle; margin-right: 10px; }
+        .user-avatar-img { width: 52px; height: 52px; border-radius: 8px; border: 1px solid #ebeef5; object-fit: cover; cursor: pointer; transition: transform 0.2s; }
+        .user-avatar-img:hover { transform: scale(1.08); }
+        .user-info-box { display: flex; align-items: center; gap: 12px; }
+        .user-name-text { font-weight: 600; font-size: 14px; color: #303133; }
     </style>
 </head>
 <body>
@@ -66,19 +69,40 @@
 
             <el-card shadow="never">
                 <template #header>
-                    <div style="font-weight: bold;">用户白名单管理</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: bold;">用户白名单审核（头像为第一识别特征）</span>
+                        <el-button size="small" type="primary" plain @click="fetchData" :loading="loading">刷新列表</el-button>
+                    </div>
                 </template>
                 <el-table :data="users" style="width: 100%" v-loading="loading">
-                    <el-table-column label="用户">
+                    <el-table-column label="用户头像与昵称" min-width="180">
                         <template #default="scope">
-                            <div style="display: flex; align-items: center;">
-                                <img :src="formatAvatar(scope.row.avatar)" class="user-avatar" />
-                                <span>{{ scope.row.nickname || '未授权用户' }}</span>
+                            <div class="user-info-box">
+                                <el-image 
+                                    class="user-avatar-img"
+                                    :src="formatAvatar(scope.row.avatar)" 
+                                    :preview-src-list="[formatAvatar(scope.row.avatar)]"
+                                    fit="cover"
+                                    preview-teleported>
+                                </el-image>
+                                <div>
+                                    <div class="user-name-text">{{ scope.row.nickname || '未完善昵称' }}</div>
+                                    <div style="margin-top: 4px;">
+                                        <el-tag v-if="scope.row.is_whitelist === 1" type="success" size="small" effect="dark">已获授权</el-tag>
+                                        <el-tag v-else-if="hasValidProfile(scope.row)" type="warning" size="small" effect="plain">新登记·待授权</el-tag>
+                                        <el-tag v-else type="info" size="small">未完善资料</el-tag>
+                                    </div>
+                                </div>
                             </div>
                         </template>
                     </el-table-column>
-                    <el-table-column prop="openid" label="OpenID"></el-table-column>
-                    <el-table-column label="超级白名单" width="150" align="center">
+                    <el-table-column prop="openid" label="OpenID" min-width="170"></el-table-column>
+                    <el-table-column label="最近活跃" width="160" align="center">
+                        <template #default="scope">
+                            <span style="font-size: 12px; color: #606266;">{{ formatTime(scope.row.last_login_at) }}</span>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="超级白名单授权" width="150" align="center">
                         <template #default="scope">
                             <el-switch 
                                 :model-value="scope.row.is_whitelist === 1"
@@ -203,13 +227,40 @@
                     return avatar;
                 };
 
+                const hasValidProfile = (user) => {
+                    if (!user) return false;
+                    const hasAvatar = user.avatar && 
+                                      !user.avatar.startsWith('wxfile://') && 
+                                      !user.avatar.startsWith('http://tmp/') &&
+                                      !user.avatar.includes('elemecdn.com');
+                    const hasNickname = user.nickname && 
+                                        user.nickname.trim() && 
+                                        !user.nickname.includes('同路人') &&
+                                        user.nickname !== '微信用户' &&
+                                        user.nickname !== '未授权用户';
+                    return Boolean(hasAvatar && hasNickname);
+                };
+
+                const formatTime = (timeStr) => {
+                    if (!timeStr) return '从未';
+                    try {
+                        const d = new Date(timeStr);
+                        if (isNaN(d.getTime())) return timeStr;
+                        const pad = (n) => String(n).padStart(2, '0');
+                        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                    } catch (e) {
+                        return timeStr;
+                    }
+                };
+
                 onMounted(() => {
                     if (token.value) fetchData();
                 });
 
                 return {
                     token, email, code, countdown, globalAudit, users, loading,
-                    sendCode, login, logout, updateGlobalAudit, toggleWhitelist, formatAvatar
+                    sendCode, login, logout, updateGlobalAudit, toggleWhitelist, formatAvatar,
+                    hasValidProfile, formatTime
                 }
             }
         }).use(ElementPlus).mount('#app');

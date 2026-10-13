@@ -51,6 +51,10 @@
 					<text class="nav-subtitle">和合本 ▼</text>
 				</view>
 				<view class="nav-right">
+					<view class="chajing-entry-btn" @click.stop="goToChajing">
+						<text class="chajing-entry-icon">📚</text>
+						<text class="chajing-entry-text">查经</text>
+					</view>
 					<view class="search-entry-btn" @click.stop="goToSearch">
 						<text class="search-entry-icon">🔍</text>
 					</view>
@@ -292,6 +296,12 @@ export default {
 		},
 
 		// 跳转到全书经文搜索
+		goToChajing() {
+			const bookParam = this.selectedBook ? ('?book=' + this.selectedBook) : '';
+			uni.navigateTo({
+				url: '/pages/bible/chajing' + bookParam
+			});
+		},
 		goToSearch() {
 			uni.navigateTo({
 				url: '/pages/bible/search'
@@ -476,6 +486,29 @@ export default {
 
 .search-entry-icon {
 	font-size: 26rpx;
+}
+
+.chajing-entry-btn {
+	display: flex;
+	align-items: center;
+	background: #eef7ff;
+	border: 1rpx solid #b3d8ff;
+	padding: 8rpx 16rpx;
+	border-radius: 30rpx;
+	white-space: nowrap;
+	flex-shrink: 0;
+	margin-right: 14rpx;
+}
+
+.chajing-entry-icon {
+	font-size: 24rpx;
+	margin-right: 6rpx;
+}
+
+.chajing-entry-text {
+	font-size: 24rpx;
+	color: #1971c2;
+	font-weight: bold;
 }
 
 .plan-entry-btn {

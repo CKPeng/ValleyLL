@@ -45,7 +45,14 @@
 					</view>
 
 					<view class="nav-right-safe">
-						<text class="version-label">和合本</text>
+						<view class="chajing-pill-btn" @click.stop="goToChajing">
+							<text class="chajing-pill-icon">📚</text>
+							<text class="chajing-pill-text">查经</text>
+						</view>
+						<view class="version-selector-btn" @click.stop="openVersionModal">
+							<text class="version-label">{{ currentVersionShortName }}</text>
+							<text class="version-arrow">▾</text>
+						</view>
 					</view>
 				</view>
 
@@ -328,6 +335,49 @@
 				<text class="toolbar-icon">📤</text>
 				<text class="toolbar-text">分享</text>
 			</button>
+		</view>
+		<!-- 译本选择弹层抽屉 -->
+		<view v-if="showVersionModal" class="version-modal-mask" @click.stop="closeVersionModal">
+			<view class="version-modal-content" @click.stop>
+				<view class="version-modal-header">
+					<text class="version-modal-title">选择经文译本</text>
+					<text class="version-modal-close" @click.stop="closeVersionModal">✕</text>
+				</view>
+				<scroll-view scroll-y class="version-modal-list">
+					<!-- 分组一：中文版本 -->
+					<view class="version-group-title">中文译本</view>
+					<view 
+						v-for="ver in chineseVersions" 
+						:key="ver.code" 
+						class="version-item" 
+						:class="{ 'is-selected': currentVersion === ver.code }"
+						@click.stop="selectVersion(ver)">
+						<view class="version-item-left">
+							<text class="version-item-name">{{ ver.name }}</text>
+							<text class="version-item-desc">{{ ver.desc }}</text>
+						</view>
+						<text v-if="currentVersion === ver.code" class="version-check-icon">✓</text>
+					</view>
+
+					<!-- 分组二：英文版本 -->
+					<view class="version-group-title">英文译本 (English)</view>
+					<view 
+						v-for="ver in englishVersions" 
+						:key="ver.code" 
+						class="version-item" 
+						:class="{ 'is-selected': currentVersion === ver.code }"
+						@click.stop="selectVersion(ver)">
+						<view class="version-item-left">
+							<view class="version-name-row">
+								<text class="version-item-name">{{ ver.short }}</text>
+								<text class="version-badge" v-if="ver.badge">{{ ver.badge }}</text>
+							</view>
+							<text class="version-item-desc">{{ ver.name }} · {{ ver.desc }}</text>
+						</view>
+						<text v-if="currentVersion === ver.code" class="version-check-icon">✓</text>
+					</view>
+				</scroll-view>
+			</view>
 		</view>
 	</view>
 </view>

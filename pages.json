@@ -30,6 +30,13 @@
 			}
 		},
 		{
+			"path": "pages/bible/plan-history",
+			"style": {
+				"navigationBarTitleText": "",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/bible/team",
 			"style": {
 				"navigationBarTitleText": "",
@@ -41,6 +48,14 @@
 			"style": {
 				"navigationBarTitleText": "",
 				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/bible/chajing",
+			"style": {
+				"navigationBarTitleText": "查经资料",
+				"navigationBarBackgroundColor": "#ffffff",
+				"navigationBarTextStyle": "black"
 			}
 		}
 	],

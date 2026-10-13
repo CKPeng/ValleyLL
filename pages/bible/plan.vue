@@ -418,14 +418,17 @@
 					<text class="team-card-arrow">➔</text>
 				</view>
 
-				<!-- 本周字数总账弹性平衡看板（以周为单位检查总账） -->
-				<view class="weekly-card">
+				<!-- 本周字数总账弹性平衡看板（以周为单位检查总账，点击进入各周明细页面） -->
+				<view class="weekly-card clickable-weekly-card" @click="goToPlanHistory">
 					<view class="weekly-title-row">
 						<view class="weekly-title-group">
 							<text class="card-title">本周字数总账平衡</text>
 							<text class="week-pill">第 {{ weeklySummary.currentWeekNumber }}/{{ weeklySummary.totalWeeks }} 周</text>
 						</view>
-						<text class="status-tag" :class="statusClass">{{ statusLabel }}</text>
+						<view class="weekly-status-group">
+							<text class="status-tag" :class="statusClass">{{ statusLabel }}</text>
+							<text class="detail-link-text">各周明细 ➔</text>
+						</view>
 					</view>
 
 					<view class="progress-bar-bg week-bar">
@@ -433,7 +436,7 @@
 					</view>
 					<view class="progress-labels">
 						<text class="progress-num">{{ weeklySummary.weekFinishedWords.toLocaleString() }} / {{ weeklySummary.weeklyTargetWords.toLocaleString() }} 字</text>
-						<text class="progress-pct">{{ weeklyProgressPercent }}%</text>
+						<text class="progress-pct">{{ weeklyProgressPercent }}% (点击查看各周)</text>
 					</view>
 
 					<view class="encourage-box">
@@ -452,6 +455,11 @@
 							</text>
 						</view>
 						<text class="total-words-badge">共约 {{ recommendation.totalRecommendedWords }} 字</text>
+					</view>
+
+					<view v-if="recommendation.dynamicPillTip" class="dynamic-target-pill">
+						<text class="pill-dot">⚡</text>
+						<text class="pill-msg">{{ recommendation.dynamicPillTip }}</text>
 					</view>
 
 					<view class="mode-desc-card">
@@ -1045,6 +1053,12 @@ export default {
 			});
 		},
 
+		goToPlanHistory() {
+			uni.navigateTo({
+				url: '/pages/bible/plan-history'
+			});
+		},
+
 		changeTrack(trackType) {
 			// 使用本地存储传递参数，确保绝对可靠
 			uni.setStorageSync('temp_select_for_plan', trackType);
@@ -1593,6 +1607,49 @@ export default {
 	background: #f1ede6;
 	padding: 2rpx 12rpx;
 	border-radius: 12rpx;
+}
+
+.clickable-weekly-card {
+	cursor: pointer;
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.clickable-weekly-card:active {
+	transform: scale(0.985);
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+}
+
+.weekly-status-group {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+}
+
+.detail-link-text {
+	font-size: 22rpx;
+	color: #1c7ed6;
+	font-weight: 600;
+}
+
+.dynamic-target-pill {
+	display: flex;
+	align-items: center;
+	background: linear-gradient(135deg, rgba(28, 126, 214, 0.08) 0%, rgba(34, 139, 230, 0.12) 100%);
+	border: 1rpx solid rgba(28, 126, 214, 0.25);
+	padding: 10rpx 20rpx;
+	border-radius: 12rpx;
+	margin-bottom: 20rpx;
+}
+
+.pill-dot {
+	font-size: 26rpx;
+	margin-right: 10rpx;
+}
+
+.pill-msg {
+	font-size: 24rpx;
+	color: #1971c2;
+	font-weight: 600;
 }
 
 .status-tag {

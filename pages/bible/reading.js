@@ -74,6 +74,10 @@ export default {
 			showToolbar: true,
 			toolbarTimer: null,
 
+			// 经文译本管理
+			currentVersion: uni.getStorageSync('VALLEY_BIBLE_VERSION') || 'cuv',
+			showVersionModal: false,
+
 			// 搜索相关状态
 			searchActive: false,
 			searchKeyword: '',
@@ -86,6 +90,37 @@ export default {
 
 	// 计算属性
 	computed: {
+		chineseVersions() {
+			return [
+				{ code: 'cuv', short: '和合本', name: '国语和合本 (CUV)', desc: '经典传统译本 · 读经首选', dir: 'bible-data', audioDir: '汉语和合本-磐石版' }
+			];
+		},
+
+		englishVersions() {
+			return [
+				{ code: 'en-web', short: 'WEB', name: 'World English Bible', desc: '世界英语圣经 · 现代美音朗读', dir: 'bible-data-en-web', badge: '推荐', audioDir: '英语WEB-现代美音版' },
+				{ code: 'en-kjv', short: 'KJV', name: 'King James Version', desc: '钦定本 · 传世经典朗读', dir: 'bible-data-en-kjv', badge: '经典', audioDir: '英语KJV-经典朗读版' },
+				{ code: 'en-bsb', short: 'BSB', name: 'Berean Standard Bible', desc: '庇哩亚标准圣经 · 精准现代', dir: 'bible-data-en-bsb', badge: '热门', audioDir: '英语WEB-现代美音版' },
+				{ code: 'en-esv', short: 'ESV', name: 'English Standard Version', desc: '英语标准版 · 严谨直译', dir: 'bible-data-en-esv', audioDir: '英语WEB-现代美音版' },
+				{ code: 'en-niv', short: 'NIV', name: 'New International Version', desc: '新国际版 · 全球畅销', dir: 'bible-data-en-niv', audioDir: '英语WEB-现代美音版' },
+				{ code: 'en-bbe', short: 'BBE', name: 'Bible in Basic English', desc: '基础英语圣经 · 850词简易对照', dir: 'bible-data-en-bbe', audioDir: '英语WEB-现代美音版' },
+				{ code: 'en-nkjv', short: 'NKJV', name: 'New King James Version', desc: '新钦定本 · 现代文风', dir: 'bible-data-en-nkjv', audioDir: '英语KJV-经典朗读版' },
+				{ code: 'en-nlt', short: 'NLT', name: 'New Living Translation', desc: '新普及译本 · 浅白通俗', dir: 'bible-data-en-nlt', audioDir: '英语WEB-现代美音版' },
+				{ code: 'en-nasb', short: 'NASB', name: 'New American Standard Bible', desc: '新美国标准版 · 学者推荐', dir: 'bible-data-en-nasb', audioDir: '英语WEB-现代美音版' },
+				{ code: 'en-asv', short: 'ASV', name: 'American Standard Version', desc: '美国标准版 (1901) · 经典直译', dir: 'bible-data-en-asv', audioDir: '英语KJV-经典朗读版' },
+				{ code: 'en-darby', short: 'Darby', name: "Darby's Translation", desc: '达秘译本 · 经典字对字', dir: 'bible-data-en-darby', audioDir: '英语KJV-经典朗读版' }
+			];
+		},
+
+		currentVersionObj() {
+			const all = [...this.chineseVersions, ...this.englishVersions];
+			return all.find(v => v.code === this.currentVersion) || this.chineseVersions[0];
+		},
+
+		currentVersionShortName() {
+			return this.currentVersionObj ? this.currentVersionObj.short : '和合本';
+		},
+
 		chapterTitle() {
 			if (!this.currentBookInfo) return '';
 			return `${this.currentBookInfo.fullName} 第 ${this.chapter} 章`;
@@ -237,9 +272,8 @@ export default {
 			if (!this.isLoading) {
 				this.loadChapter();
 			}
-		} else {
-			this.updatePlanProgress();
 		}
+		this.updatePlanProgress();
 	},
 
 	onHide() {
@@ -289,6 +323,14 @@ export default {
 	},
 
 	methods: {
+		// 跳转到查经资料页面
+		goToChajing() {
+			const bookParam = this.bookId ? ('?book=' + this.bookId) : '';
+			uni.navigateTo({
+				url: '/pages/bible/chajing' + bookParam
+			});
+		},
+
 		// 监听经文内容滚动
 		handleScroll(e) {
 			if (!e || !e.detail) return;
@@ -338,6 +380,12 @@ export default {
 		},
 
 		// 返回上一页
+		goToChajing() {
+			const bookParam = this.bookId ? ('?book=' + this.bookId) : '';
+			uni.navigateTo({
+				url: '/pages/bible/chajing' + bookParam
+			});
+		},
 		goBack() {
 			uni.navigateBack();
 		},
@@ -371,7 +419,8 @@ export default {
 			try {
 				const userInfo = uni.getStorageSync('VALLEY_USER_INFO') || uni.getStorageSync('VALLEY_BIBLE_USER_INFO_V1');
 				const openid = userInfo ? userInfo.openid : '';
-				const dataUrl = `${BIBLE_ASSETS_BASE}/bible-data/volume-${volumeSN}-chapter-${this.chapter}.json${openid ? '?openid=' + openid : ''}`;
+				const verDir = (this.currentVersionObj && this.currentVersionObj.dir) || 'bible-data';
+				const dataUrl = `${BIBLE_ASSETS_BASE}/${verDir}/volume-${volumeSN}-chapter-${this.chapter}.json${openid ? '?openid=' + openid : ''}`;
 				console.log('Loading chapter from:', dataUrl);
 				
 				const data = await new Promise((resolve, reject) => {
@@ -410,10 +459,15 @@ export default {
 				// 生成微读圣经纸版排版结构数据
 				this.formatPaperBlocks();
 
-				// 精确统计本章中文字数（过滤掉符号，纯文本字数）
+				// 精确统计本章字数 (中文统计字符数，英文统计单词数)
 				this.chapterWordCount = this.verses.reduce((sum, v) => {
-					const clean = (v.text || '').replace(/[^\u4e00-\u9fa50-9a-zA-Z]/g, '');
-					return sum + clean.length;
+					if (this.currentVersion === 'cuv') {
+						const clean = (v.text || '').replace(/[^\u4e00-\u9fa50-9a-zA-Z]/g, '');
+						return sum + clean.length;
+					} else {
+						const words = (v.text || '').trim().split(/\s+/).filter(Boolean);
+						return sum + words.length;
+					}
 				}, 0);
 
 				// 检查本章是否已经在读经计划中打卡
@@ -596,11 +650,46 @@ export default {
 			}
 		},
 
+		// 译本选择弹窗控制
+		openVersionModal() {
+			this.showVersionModal = true;
+		},
+
+		closeVersionModal() {
+			this.showVersionModal = false;
+		},
+
+		selectVersion(ver) {
+			if (this.currentVersion === ver.code) {
+				this.closeVersionModal();
+				return;
+			}
+			this.currentVersion = ver.code;
+			uni.setStorageSync('VALLEY_BIBLE_VERSION', ver.code);
+			this.closeVersionModal();
+
+			// 切换译本时，若正在播放音频则停止并复位
+			if (this.audioContext && this.isPlaying) {
+				this.audioContext.stop();
+				this.isPlaying = false;
+			}
+
+			uni.showToast({
+				title: `已切换至 ${ver.short}`,
+				icon: 'none'
+			});
+
+			// 立即重新拉取该译本的当章经文
+			this.loadChapter();
+		},
+
 		// 生成音频 URL
 		getAudioUrl() {
 			if (!this.currentBookInfo) return '';
 			
-			const baseUrl = `${BIBLE_ASSETS_BASE}/汉语和合本-磐石版`;
+			const verObj = this.currentVersionObj;
+			const audioFolder = (verObj && verObj.audioDir) || '汉语和合本-磐石版';
+			const baseUrl = `${BIBLE_ASSETS_BASE}/${audioFolder}`;
 			const bookName = this.currentBookInfo.fullName;
 			const fileName = `${bookName}第${this.chapter}章.mp3`;
 			
@@ -794,7 +883,8 @@ export default {
 				if (plan.status && plan.status !== 'PLANNING') {
 					this.fromPlan = true;
 				}
-				this.todayTargetWords = plan.dailyTargetWords || 5000;
+				// 优先使用根据本周完成节奏自适应动态平摊后的今日目标字数
+				this.todayTargetWords = planManager.getDynamicDailyTargetWords();
 				this.todayFinishedWords = planManager.getTodayFinishedWords();
 			}
 		},

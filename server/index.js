@@ -24,9 +24,17 @@ const pool = mysql.createPool({
     timezone: '+08:00'
 });
 
-// 初始化数据表
+// 初始化数据表及全局时区保障
 (async function initTables() {
     try {
+        // 双重加固：锁定全局与会话时区为严格东八区 (+08:00)
+        try {
+            await pool.query("SET GLOBAL time_zone = '+08:00'");
+            await pool.query("SET time_zone = '+08:00'");
+        } catch (tzErr) {
+            console.warn('[Init] 设置时区警告:', tzErr.message);
+        }
+
         await pool.query(`
             CREATE TABLE IF NOT EXISTS bible_user (
               id INT AUTO_INCREMENT PRIMARY KEY,
@@ -56,8 +64,8 @@ const pool = mysql.createPool({
                 applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
         `);
-        const [applied] = await pool.query('SELECT patch_name FROM bible_db_patch_log WHERE patch_name = ?', ['patch_fix_timezone_utc8_v1']);
-        if (applied.length === 0) {
+        const [appliedCheckin] = await pool.query('SELECT patch_name FROM bible_db_patch_log WHERE patch_name = ?', ['patch_fix_timezone_utc8_v1']);
+        if (appliedCheckin.length === 0) {
             console.log('[Migration] 正在执行历史打卡记录时区校准 (+8 小时)...');
             await pool.query(`
                 UPDATE bible_checkin_record 
@@ -67,6 +75,21 @@ const pool = mysql.createPool({
             await pool.query('INSERT INTO bible_db_patch_log (patch_name) VALUES (?)', ['patch_fix_timezone_utc8_v1']);
             console.log('[Migration] 历史打卡记录时区校准完成');
         }
+
+        // 用户表历史时区校准补丁：校准历史用户表中的少存 8 小时数据
+        const [appliedUser] = await pool.query('SELECT patch_name FROM bible_db_patch_log WHERE patch_name = ?', ['patch_fix_user_timezone_utc8_v1']);
+        if (appliedUser.length === 0) {
+            console.log('[Migration] 正在执行用户表历史时间校准 (+8 小时)...');
+            await pool.query(`
+                UPDATE bible_user 
+                SET last_login_at = DATE_ADD(last_login_at, INTERVAL 8 HOUR),
+                    create_time = DATE_ADD(create_time, INTERVAL 8 HOUR)
+                WHERE id > 0
+            `);
+            await pool.query('INSERT INTO bible_db_patch_log (patch_name) VALUES (?)', ['patch_fix_user_timezone_utc8_v1']);
+            console.log('[Migration] 用户表历史时间校准完成');
+        }
+
         console.log('[Init] 用户主表与云端计划表就绪');
     } catch (e) {
         console.error('[Init] 表初始化失败:', e);
@@ -145,6 +168,7 @@ app.use('/bak/bible-mp3-cn', bibleAuditCutoff);
 app.use('/bak', express.static(process.env.STATIC_BAK_PATH || path.join(__dirname, '../bak')));
 app.use('/h5', express.static(process.env.STATIC_H5_PATH || path.join(__dirname, '../dist/build/h5')));
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+app.use('/chajing', express.static(process.env.STATIC_CHAJING_PATH || path.join(__dirname, '../chajing-new')));
 
 // ==========================================
 // 1. 诗歌兼容接口 (兼容旧 renren-api 路径与新 API 路径)

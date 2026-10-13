@@ -1,0 +1,902 @@
+/* ==============================================================================
+   读经小队主页面样式表 (team.css)
+   ============================================================================== */
+
+.team-page {
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+	background-color: #f7f5f0;
+	color: #2c2523;
+}
+
+/* 顶部导航栏 */
+.nav-bar {
+	display: flex;
+	align-items: center;
+	background: #fdfbf7;
+	border-bottom: 1rpx solid #eae5dc;
+	flex-shrink: 0;
+	box-sizing: border-box;
+}
+
+.nav-content {
+	display: flex;
+	align-items: center;
+	width: 100%;
+}
+
+.nav-left {
+	display: flex;
+	align-items: center;
+	height: 100%;
+	flex-shrink: 0;
+}
+
+.back-arrow-icon {
+	width: 18rpx;
+	height: 18rpx;
+	border-left: 4rpx solid #2c2523;
+	border-bottom: 4rpx solid #2c2523;
+	transform: rotate(45deg);
+	display: inline-block;
+	margin-right: 12rpx;
+	box-sizing: border-box;
+}
+
+.back-text {
+	font-size: 28rpx;
+	color: #2c2523;
+	line-height: 1;
+}
+
+.team-scroll {
+	flex: 1;
+	padding: 24rpx;
+	box-sizing: border-box;
+}
+
+/* 登录授权卡片 */
+.auth-card {
+	background: #ffffff;
+	border-radius: 24rpx;
+	padding: 60rpx 40rpx;
+	margin-top: 60rpx;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	border: 1rpx solid #eee8df;
+	box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.04);
+}
+
+.auth-icon-box {
+	width: 120rpx;
+	height: 120rpx;
+	background: #fff4e6;
+	border-radius: 60rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 24rpx;
+}
+
+.auth-icon {
+	font-size: 56rpx;
+}
+
+.auth-title {
+	font-size: 34rpx;
+	font-weight: bold;
+	color: #2c2523;
+	margin-bottom: 12rpx;
+}
+
+.auth-desc {
+	font-size: 24rpx;
+	color: #7b6d64;
+	line-height: 1.6;
+	margin-bottom: 48rpx;
+}
+
+.wechat-login-btn {
+	background: linear-gradient(135deg, #07c160, #06ad56);
+	color: #ffffff;
+	border-radius: 44rpx;
+	height: 88rpx;
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12rpx;
+	box-shadow: 0 8rpx 20rpx rgba(7, 193, 96, 0.25);
+}
+
+.wechat-login-btn::after {
+	border: none;
+}
+
+.wx-icon {
+	font-size: 36rpx;
+}
+
+.wx-btn-text {
+	font-size: 30rpx;
+	font-weight: bold;
+}
+
+/* 未入队状态容器 */
+.no-team-container {
+	display: flex;
+	flex-direction: column;
+	gap: 24rpx;
+}
+
+.user-mini-card {
+	background: #ffffff;
+	border-radius: 20rpx;
+	padding: 24rpx;
+	display: flex;
+	align-items: center;
+	border: 1rpx solid #eee8df;
+}
+
+.my-avatar {
+	width: 90rpx;
+	height: 90rpx;
+	border-radius: 45rpx;
+	margin-right: 20rpx;
+	border: 2rpx solid #c58b43;
+}
+
+.my-info {
+	display: flex;
+	flex-direction: column;
+}
+
+.my-name {
+	font-size: 30rpx;
+	font-weight: bold;
+	color: #2c2523;
+}
+
+.my-status-text {
+	font-size: 22rpx;
+	color: #8c7b6f;
+	margin-top: 6rpx;
+}
+
+.team-action-grid {
+	display: flex;
+	flex-direction: column;
+	gap: 24rpx;
+}
+
+.action-card {
+	background: #ffffff;
+	border-radius: 24rpx;
+	padding: 36rpx;
+	border: 1rpx solid #eee8df;
+	display: flex;
+	flex-direction: column;
+	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+.action-icon-circle {
+	width: 90rpx;
+	height: 90rpx;
+	border-radius: 45rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 20rpx;
+}
+
+.bg-orange {
+	background: #fff4e6;
+}
+
+.bg-blue {
+	background: #e7f5ff;
+}
+
+.action-icon {
+	font-size: 44rpx;
+}
+
+.action-card-title {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #2c2523;
+	margin-bottom: 8rpx;
+}
+
+.action-card-desc {
+	font-size: 24rpx;
+	color: #7b6d64;
+	line-height: 1.5;
+	margin-bottom: 28rpx;
+}
+
+.action-btn {
+	border-radius: 40rpx;
+	height: 76rpx;
+	line-height: 76rpx;
+	font-size: 28rpx;
+	font-weight: bold;
+	color: #ffffff;
+}
+
+.action-btn::after {
+	border: none;
+}
+
+.btn-orange {
+	background: linear-gradient(135deg, #c58b43, #a46724);
+}
+
+.btn-blue {
+	background: linear-gradient(135deg, #339af0, #1c7ed6);
+}
+
+/* 团队仪表盘 */
+.team-dashboard {
+	display: flex;
+	flex-direction: column;
+	gap: 24rpx;
+}
+
+.team-info-banner {
+	background: linear-gradient(135deg, #2c2523, #433835);
+	color: #ffffff;
+	border-radius: 28rpx;
+	padding: 36rpx 32rpx;
+	box-shadow: 0 10rpx 30rpx rgba(44, 37, 35, 0.15);
+}
+
+.banner-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.banner-title-box {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+}
+
+.team-main-name {
+	font-size: 36rpx;
+	font-weight: bold;
+	letter-spacing: 1rpx;
+}
+
+.team-code-badge {
+	display: inline-flex;
+	align-items: center;
+	background: rgba(255, 255, 255, 0.12);
+	padding: 6rpx 16rpx;
+	border-radius: 20rpx;
+	width: fit-content;
+}
+
+.code-label {
+	font-size: 22rpx;
+	color: #d8cebe;
+}
+
+.code-val {
+	font-size: 24rpx;
+	font-weight: bold;
+	color: #f7ba5b;
+	margin: 0 8rpx;
+	letter-spacing: 2rpx;
+}
+
+.copy-hint {
+	font-size: 20rpx;
+	color: #ffffff;
+	background: rgba(255, 255, 255, 0.2);
+	padding: 2rpx 8rpx;
+	border-radius: 6rpx;
+}
+
+.banner-remind-btn {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	background: linear-gradient(135deg, #d97706, #b45309);
+	padding: 12rpx 24rpx;
+	border-radius: 32rpx;
+	box-shadow: 0 4rpx 12rpx rgba(180, 83, 9, 0.25);
+	transition: all 0.2s ease;
+	margin-left: 20rpx;
+	flex-shrink: 0;
+}
+
+.banner-remind-btn:active {
+	transform: scale(0.96);
+	opacity: 0.9;
+}
+
+.remind-main-icon {
+	font-size: 26rpx;
+}
+
+.remind-main-txt {
+	font-size: 24rpx;
+	font-weight: 600;
+	color: #ffffff;
+}
+
+.team-progress-box {
+	margin-top: 32rpx;
+}
+
+.progress-title-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 12rpx;
+}
+
+.team-prog-lbl {
+	font-size: 22rpx;
+	color: #d8cebe;
+}
+
+.team-prog-val {
+	font-size: 22rpx;
+	font-weight: bold;
+	color: #f7ba5b;
+}
+
+.progress-bar-bg {
+	width: 100%;
+	height: 16rpx;
+	background: rgba(255, 255, 255, 0.15);
+	border-radius: 8rpx;
+	overflow: hidden;
+}
+
+.progress-bar-fill {
+	height: 100%;
+	background: linear-gradient(90deg, #c58b43, #f7ba5b);
+	border-radius: 8rpx;
+	transition: width 0.3s ease;
+}
+
+.team-achieve-tag {
+	font-size: 20rpx;
+	color: #a4968c;
+	margin-top: 10rpx;
+	display: block;
+}
+
+/* 模块卡片 */
+.section-card {
+	background: #ffffff;
+	border-radius: 24rpx;
+	padding: 32rpx 24rpx;
+	border: 1rpx solid #eee8df;
+	box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.02);
+}
+
+.section-title-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 24rpx;
+	padding-bottom: 16rpx;
+	border-bottom: 1rpx solid #f4efe6;
+}
+
+.sec-title {
+	font-size: 30rpx;
+	font-weight: bold;
+	color: #2c2523;
+}
+
+.sec-sub {
+	font-size: 22rpx;
+	color: #8c7b6f;
+}
+
+/* 成员列表 */
+.member-list {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.member-row {
+	display: flex;
+	align-items: center;
+	padding: 16rpx;
+	background: #fbf9f5;
+	border-radius: 16rpx;
+	border: 1rpx solid #f4efe6;
+}
+
+.member-row.my-row {
+	background: #fff8ee;
+	border-color: #f1dfc5;
+}
+
+.rank-box {
+	width: 44rpx;
+	text-align: center;
+	margin-right: 12rpx;
+}
+
+.rank-num {
+	font-size: 26rpx;
+	font-weight: bold;
+	color: #8c7b6f;
+}
+
+.rank-1 { color: #d48806; font-size: 30rpx; }
+.rank-2 { color: #8c8c8c; font-size: 28rpx; }
+.rank-3 { color: #b8741a; font-size: 28rpx; }
+
+.member-avatar {
+	width: 80rpx;
+	height: 80rpx;
+	border-radius: 40rpx;
+	margin-right: 16rpx;
+	border: 2rpx solid #eee8df;
+}
+
+.member-meta {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 6rpx;
+}
+
+.member-name-row {
+	display: flex;
+	align-items: center;
+	gap: 10rpx;
+}
+
+.member-name {
+	font-size: 26rpx;
+	font-weight: bold;
+	color: #2c2523;
+}
+
+.leader-badge {
+	font-size: 18rpx;
+	background: #c58b43;
+	color: #ffffff;
+	padding: 2rpx 8rpx;
+	border-radius: 6rpx;
+}
+
+.me-badge {
+	font-size: 18rpx;
+	background: #2c2523;
+	color: #ffffff;
+	padding: 2rpx 8rpx;
+	border-radius: 6rpx;
+}
+
+.member-words-row {
+	display: flex;
+	gap: 16rpx;
+}
+
+.mem-today-words {
+	font-size: 22rpx;
+	color: #c58b43;
+	font-weight: bold;
+}
+
+.mem-week-words {
+	font-size: 22rpx;
+	color: #8c7b6f;
+}
+
+.member-status-box {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 6rpx;
+}
+
+.done-tag-box {
+	display: flex;
+	align-items: center;
+	gap: 4rpx;
+	background: #e6fcf5;
+	padding: 4rpx 10rpx;
+	border-radius: 8rpx;
+}
+
+.done-tag-icon {
+	font-size: 20rpx;
+	color: #0ca678;
+}
+
+.done-tag-txt {
+	font-size: 20rpx;
+	color: #0ca678;
+	font-weight: bold;
+}
+
+.left-tag-box {
+	background: #fff4e6;
+	padding: 4rpx 10rpx;
+	border-radius: 8rpx;
+}
+
+.left-tag-txt {
+	font-size: 20rpx;
+	color: #f76707;
+	font-weight: bold;
+}
+
+.streak-tag {
+	font-size: 20rpx;
+	color: #8c7b6f;
+}
+
+.member-nudge-btn {
+	background: #fff7ed;
+	border: 1rpx solid #fed7aa;
+	padding: 4rpx 14rpx;
+	border-radius: 20rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-top: 4rpx;
+}
+
+.member-nudge-btn:active {
+	background: #ffedd5;
+}
+
+.nudge-txt {
+	font-size: 20rpx;
+	color: #c2410c;
+	font-weight: 600;
+}
+
+/* 打卡动态流 */
+.activity-feed {
+	display: flex;
+	flex-direction: column;
+	gap: 20rpx;
+}
+
+.feed-item {
+	background: #ffffff;
+	border-radius: 20rpx;
+	padding: 24rpx;
+	box-shadow: 0 4rpx 16rpx rgba(140, 123, 111, 0.06);
+	border: 1rpx solid #f2ece4;
+	display: flex;
+	flex-direction: column;
+	transition: all 0.25s ease;
+}
+
+.feed-item.is-expanded {
+	background: #fffdfa;
+	border-color: #ebdcc9;
+	box-shadow: 0 6rpx 20rpx rgba(197, 139, 67, 0.1);
+}
+
+.feed-card-header {
+	display: flex;
+	align-items: center;
+	width: 100%;
+}
+
+.feed-avatar {
+	width: 76rpx;
+	height: 76rpx;
+	border-radius: 38rpx;
+	margin-right: 16rpx;
+	border: 2rpx solid #f0e8df;
+	flex-shrink: 0;
+}
+
+.feed-user-meta {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+
+.user-line {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+}
+
+.feed-user {
+	font-size: 28rpx;
+	font-weight: 700;
+	color: #2c2523;
+	max-width: 320rpx;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.checkin-badge {
+	font-size: 20rpx;
+	font-weight: 600;
+	background: #fff3e6;
+	color: #d9480f;
+	padding: 2rpx 12rpx;
+	border-radius: 20rpx;
+	border: 1rpx solid #ffd8a8;
+}
+
+.sub-line {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	margin-top: 4rpx;
+}
+
+.feed-time {
+	font-size: 22rpx;
+	color: #a4968c;
+}
+
+.feed-dot {
+	font-size: 20rpx;
+	color: #d8cebe;
+}
+
+.feed-words {
+	font-size: 22rpx;
+	color: #b3732d;
+	font-weight: 600;
+}
+
+.feed-like-btn {
+	display: flex;
+	align-items: center;
+	padding: 8rpx 16rpx;
+	background: #f8f6f2;
+	border-radius: 24rpx;
+	margin-left: 12rpx;
+	flex-shrink: 0;
+	transition: background 0.2s;
+}
+
+.feed-like-btn:active {
+	background: #ede6dc;
+}
+
+.like-icon {
+	font-size: 24rpx;
+}
+
+.like-count {
+	font-size: 22rpx;
+	color: #8c7b6f;
+	margin-left: 6rpx;
+	font-weight: 600;
+}
+
+.feed-card-body {
+	margin-top: 16rpx;
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+}
+
+.chapter-chips-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10rpx;
+	align-items: center;
+}
+
+.chapter-chip {
+	font-size: 22rpx;
+	color: #5c4e46;
+	background: #f7f3ec;
+	padding: 6rpx 16rpx;
+	border-radius: 12rpx;
+	border: 1rpx solid #ece4d8;
+	font-weight: 500;
+}
+
+.chapter-chip.active-chip {
+	background: #fdf5ea;
+	color: #9c6018;
+	border-color: #f1dfc5;
+}
+
+.more-chip {
+	font-size: 20rpx;
+	color: #c58b43;
+	background: #fff8ee;
+	padding: 6rpx 14rpx;
+	border-radius: 12rpx;
+	border: 1rpx solid #f9e7cf;
+	font-weight: 600;
+}
+
+.feed-expanded-content {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.expanded-chips {
+	background: #faf7f2;
+	padding: 12rpx;
+	border-radius: 14rpx;
+	border: 1rpx dashed #ece2d2;
+}
+
+.reflections-box {
+	display: flex;
+	flex-direction: column;
+	gap: 8rpx;
+}
+
+.reflection-bubble {
+	display: flex;
+	align-items: flex-start;
+	gap: 8rpx;
+	background: #fdfaf6;
+	border-left: 4rpx solid #c58b43;
+	padding: 10rpx 16rpx;
+	border-radius: 0 12rpx 12rpx 0;
+}
+
+.quote-mark {
+	font-size: 26rpx;
+	color: #c58b43;
+	font-family: Georgia, serif;
+	line-height: 1;
+}
+
+.reflection-text {
+	font-size: 22rpx;
+	color: #5c4e46;
+	line-height: 1.5;
+	flex: 1;
+}
+
+.expand-action-bar {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 12rpx 0 0 0;
+	margin-top: 8rpx;
+	border-top: 1rpx dashed #f0e8de;
+}
+
+.expand-action-txt {
+	font-size: 22rpx;
+	color: #c58b43;
+	font-weight: 600;
+}
+
+.feed-empty {
+	text-align: center;
+	padding: 60rpx 0;
+}
+
+.empty-txt {
+	font-size: 24rpx;
+	color: #8c7b6f;
+}
+
+.checkin-timeline {
+	display: flex;
+	flex-direction: column;
+	margin-top: 12rpx;
+	padding-left: 10rpx;
+	border-left: 2rpx dashed #f0e8df;
+	gap: 16rpx;
+}
+
+.timeline-item {
+	position: relative;
+	padding-left: 20rpx;
+}
+
+.timeline-marker {
+	position: absolute;
+	left: -25rpx;
+	top: 10rpx;
+	width: 12rpx;
+	height: 12rpx;
+	border-radius: 6rpx;
+	background: #c58b43;
+	border: 2rpx solid #ffffff;
+}
+
+.timeline-content {
+	background: #faf7f2;
+	border-radius: 12rpx;
+	padding: 12rpx 16rpx;
+}
+
+.timeline-header {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	margin-bottom: 8rpx;
+	flex-wrap: wrap;
+}
+
+.timeline-chapter {
+	font-size: 24rpx;
+	font-weight: 600;
+	color: #5c4e46;
+	background: #fdf5ea;
+	padding: 4rpx 12rpx;
+	border-radius: 10rpx;
+	border: 1rpx solid #f1dfc5;
+}
+
+.timeline-words {
+	font-size: 22rpx;
+	color: #b3732d;
+	font-weight: 600;
+	margin-left: auto;
+}
+
+.timeline-meta {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.timeline-time {
+	font-size: 20rpx;
+	color: #a4968c;
+	font-variant-numeric: tabular-nums;
+}
+
+.timeline-actions {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+}
+
+.timeline-reflection-icon {
+	font-size: 20rpx;
+}
+
+.timeline-likes {
+	font-size: 20rpx;
+	color: #8c7b6f;
+}
+
+.timeline-reflection {
+	margin-top: 12rpx;
+	padding-top: 12rpx;
+	border-top: 1rpx dashed #f0e8de;
+	display: flex;
+	align-items: flex-start;
+	gap: 8rpx;
+}
+
+.timeline-reflection .quote-mark {
+	font-size: 24rpx;
+	color: #c58b43;
+	font-family: Georgia, serif;
+	line-height: 1.5;
+	margin-top: 2rpx;
+}
+
+.timeline-reflection .reflection-text {
+	font-size: 22rpx;
+	color: #5c4e46;
+	line-height: 1.5;
+	flex: 1;
+}

@@ -66,14 +66,21 @@ function getTodayString() {
   return `${year}-${month}-${day}`;
 }
 
-// 获取本周一零点的日期对象
-function getMonday(d) {
+// 获取指定日期所属周的礼拜天（周日，第一天）零点日期对象
+function getSunday(d) {
   const date = new Date(d);
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  date.setDate(diff);
+  const day = date.getDay(); // 0 是周日, 1-6 是周一到周六
+  date.setDate(date.getDate() - day);
   date.setHours(0, 0, 0, 0);
   return date;
+}
+
+// 格式化日期对象为 YYYY-MM-DD
+function formatDateString(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 // 挑选进度更靠前的书卷/章节指针（防止空白新设备重置老设备阅读进度）
@@ -476,6 +483,17 @@ class BiblePlanManager {
     }
   }
 
+  // 获取根据本周完成节奏自适应平摊后的今日目标字数
+  getDynamicDailyTargetWords() {
+    try {
+      const summary = this.getWeeklySummary();
+      if (summary && summary.dynamicDailyTarget) {
+        return summary.dynamicDailyTarget;
+      }
+    } catch (e) {}
+    return (this.plan && this.plan.dailyTargetWords) || 5000;
+  }
+
   // 判断某一章是否已读
   isChapterFinished(sn, chapter) {
     const key = `volume-${sn}-chapter-${chapter}`;
@@ -707,7 +725,7 @@ class BiblePlanManager {
     this.save();
   }
 
-  // 周账总账计算（以 3.5 万字为平衡单位）
+  // 周账总账计算（以礼拜天为一周起点，以周为平衡单位）
   getWeeklySummary() {
     const start = new Date(this.plan.startDate);
     const now = new Date();
@@ -715,17 +733,17 @@ class BiblePlanManager {
     const daysSinceStart = Math.max(0, Math.floor(msDiff / (1000 * 60 * 60 * 24)));
     const currentWeekNumber = Math.min(this.plan.targetWeeks, Math.floor(daysSinceStart / 7) + 1);
 
-    // 本周一
-    const thisMonday = getMonday(now);
-    const thisMondayStr = thisMonday.toISOString().split('T')[0];
+    // 本周礼拜天（周日 00:00:00 为第一天）
+    const thisSunday = getSunday(now);
+    const thisSundayStr = formatDateString(thisSunday);
 
-    // 统计本周完成字数
+    // 统计本周（从周日至今）完成字数
     let weekFinishedWords = 0;
     let weekReadChapters = 0;
     const records = this.plan.finishedChapters || {};
     for (const key in records) {
       const item = records[key];
-      if (item.date >= thisMondayStr) {
+      if (item.date >= thisSundayStr) {
         weekFinishedWords += (item.words || 0);
         weekReadChapters++;
       }
@@ -741,6 +759,34 @@ class BiblePlanManager {
       status = WEEK_STATUS.AHEAD;
     }
 
+    // 计算本周已过去的天数和本周剩余天数（含今天）
+    // 周日为第 1 天（剩余 7 天），周一为第 2 天（剩余 6 天）... 周六为第 7 天（剩余 1 天）
+    const dayOfWeek = now.getDay(); // 0 是周日, 1-6 是周一到周六
+    const remainingDaysThisWeek = 7 - dayOfWeek; // 7 (周日) 到 1 (周六)
+
+    // 计算今日之前的本周已读字数
+    const todayStr = getTodayString();
+    let wordsReadBeforeTodayThisWeek = 0;
+    for (const key in records) {
+      const item = records[key];
+      if (item.date >= thisSundayStr && item.date < todayStr) {
+        wordsReadBeforeTodayThisWeek += (item.words || 0);
+      }
+    }
+
+    // 动态摊销计算：剩余所需字数平均分配到本周剩下天数（包含今天）
+    const remainingWordsNeeded = Math.max(0, weeklyTargetWords - wordsReadBeforeTodayThisWeek);
+    const baseDailyTarget = this.plan.dailyTargetWords || 5000;
+    let dynamicDailyTarget = Math.round(remainingWordsNeeded / remainingDaysThisWeek);
+
+    // 平滑保护阈值（避免极端过高或过低）：上下浮动在 2000 ~ 9000 字之间
+    if (remainingWordsNeeded === 0) {
+      // 本周已提前全部达成，今日给一个轻松保底配额（约2000字，自由读）
+      dynamicDailyTarget = 2000;
+    } else {
+      dynamicDailyTarget = Math.max(2000, Math.min(dynamicDailyTarget, 9000));
+    }
+
     return {
       currentWeekNumber,
       totalWeeks: this.plan.targetWeeks,
@@ -749,6 +795,9 @@ class BiblePlanManager {
       weekReadChapters,
       wordBalance,
       status,
+      remainingDaysThisWeek,
+      dynamicDailyTarget,
+      baseDailyTarget,
       tips: this.getWeeklyEncourageTip(status, wordBalance)
     };
   }
@@ -756,24 +805,154 @@ class BiblePlanManager {
   getWeeklyEncourageTip(status, wordBalance) {
     if (status === WEEK_STATUS.BEHIND) {
       const abs = Math.abs(wordBalance);
-      return `本周落后约 ${abs.toLocaleString()} 字（仅相当于多读约 15~20 分钟），下周小先知书或叙事段稍作提速即可填平，莫慌张！`;
+      return `本周落后约 ${abs.toLocaleString()} 字，系统已自动按天平摊至后续几天，从容跟进即可！`;
     }
     if (status === WEEK_STATUS.AHEAD) {
-      return `本周已超额完成约 ${wordBalance.toLocaleString()} 字！节奏极其优异，今天可以轻松漫步或专注反刍。`;
+      return `本周已超额完成约 ${wordBalance.toLocaleString()} 字！后续几天配额已自动减轻，今天可轻松享受。`;
     }
-    return '本周字数步调非常匀称健康，继续保持每天一个 25 分钟番茄钟，从容吸纳。';
+    return '本周字数步调匀称健康，继续保持节奏，从容吸纳神的话语。';
   }
 
-  // 核心：基于【字数驱动】的今日推荐打包算法
+  // 获取各周完成情况及各周每日7天明细列表（用于周进度独立历史页面）
+  getWeeklyHistoryDetailedList() {
+    if (!this.plan) this.init();
+    const startDate = new Date(this.plan.startDate || getTodayString());
+    const now = new Date();
+    const todayStr = getTodayString();
+    const records = this.plan.finishedChapters || {};
+    const weeklyTargetWords = this.plan.weeklyTargetWords || 35000;
+    const baseDailyTarget = this.plan.dailyTargetWords || 5000;
+
+    // 起始周的礼拜天
+    const firstSunday = getSunday(startDate);
+    const currentSunday = getSunday(now);
+
+    // 计算至今已经历的周数，最多不超过计划设定的 targetWeeks
+    const msSinceFirstSunday = Math.max(0, now.getTime() - firstSunday.getTime());
+    const weeksPassed = Math.floor(msSinceFirstSunday / (7 * 24 * 3600 * 1000)) + 1;
+    const totalDisplayWeeks = Math.max(weeksPassed, 1);
+
+    const weekList = [];
+    const dayNames = ['周日(主日)', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+    for (let w = 1; w <= totalDisplayWeeks; w++) {
+      // 该周的礼拜天
+      const weekSun = new Date(firstSunday.getTime() + (w - 1) * 7 * 24 * 3600 * 1000);
+      const weekSat = new Date(weekSun.getTime() + 6 * 24 * 3600 * 1000);
+      const weekSunStr = formatDateString(weekSun);
+      const weekSatStr = formatDateString(weekSat);
+
+      const isCurrentWeek = weekSunStr === formatDateString(currentSunday);
+      const isFutureWeek = weekSun > now;
+
+      // 统计该周7天的每日明细
+      const days = [];
+      let weekTotalWords = 0;
+      let weekTotalChapters = 0;
+
+      for (let d = 0; d < 7; d++) {
+        const dayDate = new Date(weekSun.getTime() + d * 24 * 3600 * 1000);
+        const dayDateStr = formatDateString(dayDate);
+        const isToday = dayDateStr === todayStr;
+        const isDayFuture = dayDateStr > todayStr;
+
+        // 检索该日打卡的章节
+        const dayChapters = [];
+        let dayWords = 0;
+
+        for (const key in records) {
+          const item = records[key];
+          if (item.date === dayDateStr) {
+            dayWords += (item.words || 0);
+            // 解析 key: volume-{sn}-chapter-{chapter}
+            const match = key.match(/volume-(\d+)-chapter-(\d+)/);
+            if (match) {
+              const sn = Number(match[1]);
+              const chapter = Number(match[2]);
+              const book = bibleIndex.find(b => b.sn === sn);
+              dayChapters.push({
+                sn,
+                chapter,
+                bookName: book ? book.fullName : `卷${sn}`,
+                shortName: book ? book.shortName : `卷${sn}`,
+                words: item.words || 0
+              });
+            }
+          }
+        }
+
+        const focusMins = (this.plan.dailyFocusMinutes && this.plan.dailyFocusMinutes[dayDateStr]) || 
+                          (isToday ? (this.plan.todayFocusMinutes || 0) : 0);
+
+        days.push({
+          dateStr: dayDateStr,
+          dayName: dayNames[d],
+          dayIndex: d,
+          isToday,
+          isFuture: isDayFuture,
+          words: dayWords,
+          chaptersCount: dayChapters.length,
+          chapters: dayChapters,
+          focusMinutes: focusMins,
+          isFinishedDailyTarget: dayWords >= baseDailyTarget
+        });
+
+        weekTotalWords += dayWords;
+        weekTotalChapters += dayChapters.length;
+      }
+
+      const percent = Math.min(100, Math.round((weekTotalWords / weeklyTargetWords) * 100));
+      let weekStatusTag = '进行中';
+      let weekStatusType = 'active'; // active, completed, behind, future
+
+      if (isFutureWeek) {
+        weekStatusTag = '未开始';
+        weekStatusType = 'future';
+      } else if (weekTotalWords >= weeklyTargetWords) {
+        weekStatusTag = weekTotalWords > weeklyTargetWords + 1000 ? '超额完成' : '已达标';
+        weekStatusType = 'completed';
+      } else if (!isCurrentWeek) {
+        weekStatusTag = '未达标';
+        weekStatusType = 'behind';
+      } else {
+        weekStatusTag = '进行中';
+        weekStatusType = 'active';
+      }
+
+      weekList.push({
+        weekNumber: w,
+        startDateStr: weekSunStr,
+        endDateStr: weekSatStr,
+        rangeLabel: `${weekSunStr.slice(5).replace('-', '.')} ~ ${weekSatStr.slice(5).replace('-', '.')}`,
+        targetWords: weeklyTargetWords,
+        finishedWords: weekTotalWords,
+        finishedChapters: weekTotalChapters,
+        percent,
+        isCurrentWeek,
+        statusTag: weekStatusTag,
+        statusType: weekStatusType,
+        days
+      });
+    }
+
+    // 默认倒序展示（让最新的一周排在最前面，便于查看）
+    return weekList.reverse();
+  }
+
+  // 核心：基于【动态字数驱动】的今日推荐打包算法
   getTodayRecommendation() {
     const mainSn = this.plan.mainTrack.sn;
     const mainBook = bibleIndex.find(b => b.sn === mainSn) || bibleIndex[0];
     const mainMeta = BOOK_METAS[mainBook.bookId] || { difficulty: DIFFICULTY_LEVEL.SMOOTH };
 
     const isHard = mainMeta.difficulty === DIFFICULTY_LEVEL.HARD;
-    const dailyTarget = this.plan.dailyTargetWords || 5000;
 
-    // 分流目标：硬篇分流时，主轨约 65% (3200字)，辅轨约 35% (1800字)；单轨则主轨 100% (5000字)
+    // 动态字数配额：取每周平摊自适应建议值
+    const summary = this.getWeeklySummary();
+    const dailyTarget = summary.dynamicDailyTarget || this.plan.dailyTargetWords || 5000;
+    const baseDailyTarget = summary.baseDailyTarget || 5000;
+
+    // 分流目标：硬篇分流时，主轨约 65%，辅轨约 35%；单轨则主轨 100%
     const mainTargetWords = isHard ? Math.round(dailyTarget * 0.64) : dailyTarget;
     const subTargetWords = isHard ? Math.round(dailyTarget * 0.36) : 0;
 
@@ -845,16 +1024,28 @@ class BiblePlanManager {
       }
     }
 
+    // 生成动态提示文案
+    let dynamicPillTip = `今日自适应建议: ${dailyTarget.toLocaleString()} 字`;
+    if (dailyTarget > baseDailyTarget) {
+      dynamicPillTip = `动态增量平摊: ${dailyTarget.toLocaleString()} 字/天 (填补前序差额)`;
+    } else if (dailyTarget < baseDailyTarget && summary.weekFinishedWords >= summary.weeklyTargetWords) {
+      dynamicPillTip = `本周已超额达标! 轻松保底: ${dailyTarget.toLocaleString()} 字`;
+    } else if (dailyTarget < baseDailyTarget) {
+      dynamicPillTip = `前期超额减负: ${dailyTarget.toLocaleString()} 字/天 (从容漫步)`;
+    }
+
     return {
       isSplitMode: isHard,
       targetWords: dailyTarget,
+      baseDailyTarget,
+      dynamicPillTip,
       mainAccumWords,
       subAccumWords,
       totalRecommendedWords: mainAccumWords + subAccumWords,
       modeTitle: isHard ? '双轨分流模式（硬篇减量 + 新约诗篇滋润）' : '单轨顺畅模式（叙事连贯畅读）',
       modeDesc: isHard
-        ? `当前处于【${mainBook.fullName}】等深奥篇目。系统按字数科学拆解：主轨约 ${mainAccumWords.toLocaleString()} 字 + 辅轨约 ${subAccumWords.toLocaleString()} 字，绝不连吃硬菜！`
-        : `当前处于【${mainBook.fullName}】等叙事通畅篇目。今日打包约 ${mainAccumWords.toLocaleString()} 字，对应 25 分钟番茄钟，一气呵成！`,
+        ? `当前处于【${mainBook.fullName}】等深奥篇目。系统按动态字数拆解：主轨约 ${mainAccumWords.toLocaleString()} 字 + 辅轨约 ${subAccumWords.toLocaleString()} 字，绝不连吃硬菜！`
+        : `当前处于【${mainBook.fullName}】等叙事通畅篇目。今日打包约 ${mainAccumWords.toLocaleString()} 字，对应专注读经，一气呵成！`,
       mainTrackTitle: isHard ? `主轨·先知/律法（约 ${mainAccumWords} 字）` : `主线·通畅畅读（约 ${mainAccumWords} 字）`,
       mainList,
       subTrackTitle: `辅轨·新约/诗篇（约 ${subAccumWords} 字）`,

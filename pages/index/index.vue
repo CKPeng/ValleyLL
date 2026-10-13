@@ -64,20 +64,19 @@
 			<view class="profile-modal-card" @click.stop>
 				<view class="profile-modal-header">
 					<view class="modal-header-left">
-						<text class="profile-modal-title">个人资料</text>
+						<text class="profile-modal-title">设置个人名片</text>
 						<text class="auth-pill" :class="{ 'authed': isWechatAuthed }">
-							{{ isWechatAuthed ? '🟢 微信已授权' : '⚪ 未授权' }}
+							{{ isWechatAuthed ? '🟢 微信已连接' : '⚪ 待授权' }}
 						</text>
 					</view>
 					<text class="profile-modal-close" @click="closeProfileModal">✕</text>
 				</view>
 				<view class="profile-modal-body">
-					<!-- 未登录/未授权提示横幅 -->
-					<view v-if="!isWechatAuthed" class="login-prompt-banner">
-						<text class="login-prompt-text">授权微信可自动拉取头像昵称与历史读经记录</text>
-						<button class="auth-action-btn" :loading="isLoggingIn" @click="triggerWechatLogin">
-							💬 微信一键授权登录
-						</button>
+					<!-- 新用户登记提示横幅 (合规温和包装) -->
+					<view class="login-prompt-banner" style="background: rgba(46, 125, 50, 0.08); border-color: rgba(46, 125, 50, 0.2);">
+						<text class="login-prompt-text" style="color: #2e7d32; font-weight: 500;">
+							{{ isProfileForceModal ? '请设置您的专属头像与称呼，以便生成个人学习档案并同步云端阅读记录' : '完善个人名片可自动同步历史记录与学习统计' }}
+						</text>
 					</view>
 
 					<view class="avatar-box">
@@ -93,26 +92,28 @@
 							<view class="avatar-badge">📷</view>
 						</view>
 						<!-- #endif -->
-						<text class="avatar-tip">{{ isWechatAuthed ? '点击更换微信头像' : '点击设置微信头像' }}</text>
+						<text class="avatar-tip" :style="{ color: isHasValidAvatar ? '#2e7d32' : '#e67e22', fontWeight: 600 }">
+							{{ isHasValidAvatar ? '✔ 头像已同步' : '点击设置常用头像 (必填)' }}
+						</text>
 					</view>
 					<view class="nickname-box">
-						<text class="nickname-label">昵称</text>
+						<text class="nickname-label">称呼/昵称 <text style="color: #e74c3c;">*</text></text>
 						<input 
 							type="nickname" 
 							class="nickname-input" 
-							placeholder="点击获取或输入微信昵称" 
+							placeholder="点击获取微信昵称或输入常用称呼" 
 							:value="profileForm.nickname"
 							@input="onNicknameInput"
 							@blur="onNicknameBlur"
 						/>
 					</view>
 
-					<!-- 本地读经进度概览与云端同步控制（仅在非审核/正式读经模式下展示，图片漫游模式坚决隐藏，杜绝审核露馅） -->
+					<!-- 本地读经进度概览与云端同步控制（仅在非审核/正式模式下展示，图片漫游模式坚决隐藏，杜绝审核露馅） -->
 					<view v-if="!isRandomMode">
-						<!-- 本地读经进度概览卡片 -->
+						<!-- 本地阅读进度概览卡片 -->
 						<view class="reading-stats-card">
 							<view class="stats-card-header">
-								<text class="stats-card-title">📖 本地读经进度</text>
+								<text class="stats-card-title">📖 本地阅读进度</text>
 								<text class="stats-card-badge">{{ syncStats.finishedChapters > 0 ? '进行中' : '初创期' }}</text>
 							</view>
 							<view class="stats-row">
@@ -152,7 +153,7 @@
 				</view>
 				<view class="profile-modal-footer">
 					<button class="profile-confirm-btn" @click="saveProfile">
-						{{ isWechatAuthed ? '保存资料修改' : '微信授权登录' }}
+						{{ isProfileForceModal ? '保存并开启' : '保存资料修改' }}
 					</button>
 				</view>
 			</view>
@@ -260,6 +261,7 @@
 				choiceText: '漫游城市',
 				buttonTop: 40, // 按钮距离顶部的距离（rpx）
 				showProfileModal: false,
+				isProfileForceModal: false, // 是否为新用户必须完成登记模式
 				defaultAvatar: 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0',
 				profileForm: {
 					avatarUrl: '',
@@ -275,6 +277,15 @@
 				isWechatAuthed: false,
 				isLoggingIn: false
 			};
+		},
+		computed: {
+			isHasValidAvatar() {
+				const url = this.profileForm && this.profileForm.avatarUrl ? this.profileForm.avatarUrl.trim() : '';
+				if (!url) return false;
+				if (url === this.defaultAvatar) return false;
+				if (url.startsWith('wxfile://') || url.startsWith('http://tmp/')) return false;
+				return true;
+			}
 		},
 		onLoad: function() {
 			this.showRandomScenery(); // 初始渲染百城风景，坚决不在未获得审核放行前加载诗歌或经文
@@ -611,7 +622,8 @@
 				});
 			},
 			// 个人资料与读经同步相关方法
-			openProfileModal() {
+			openProfileModal(force = false) {
+				this.isProfileForceModal = Boolean(force);
 				const user = userTeamManager ? userTeamManager.getUser() : null;
 				this.isWechatAuthed = userTeamManager ? userTeamManager.isRealLoggedIn() : false;
 
@@ -748,6 +760,7 @@
 			},
 			closeProfileModal() {
 				this.showProfileModal = false;
+				this.isProfileForceModal = false;
 			},
 			getAvatarDisplayUrl(url) {
 				if (!url) return this.defaultAvatar;
@@ -826,19 +839,34 @@
 					return;
 				}
 
-				let name = (this.profileForm.nickname || '').trim();
-				if (!name) {
-					uni.showToast({ title: '请输入或选择昵称', icon: 'none' });
+				// 头像严格校验（头像比昵称更重要，必须设置）
+				if (!this.profileForm.avatarUrl || this.profileForm.avatarUrl === this.defaultAvatar) {
+					uni.showToast({ 
+						title: '请点击头像框设置微信头像（审核必填）', 
+						icon: 'none',
+						duration: 2500
+					});
 					return;
 				}
 
 				// 头像上传中防早存拦截：如果当前还是临时沙盒路径，说明还在上传中
-				if (this.profileForm.avatarUrl && (this.profileForm.avatarUrl.startsWith('http://tmp/') || this.profileForm.avatarUrl.startsWith('wxfile://'))) {
+				if (this.profileForm.avatarUrl.startsWith('http://tmp/') || this.profileForm.avatarUrl.startsWith('wxfile://')) {
 					uni.showToast({ title: '头像正在上传同步，请稍候...', icon: 'none' });
 					return;
 				}
 
-				const avatar = this.profileForm.avatarUrl || this.defaultAvatar;
+				// 昵称严格校验
+				let name = (this.profileForm.nickname || '').trim();
+				if (!name || name === '微信用户' || name.includes('同路人')) {
+					uni.showToast({ 
+						title: '请填写真实称呼或微信号（审核必填）', 
+						icon: 'none',
+						duration: 2500 
+					});
+					return;
+				}
+
+				const avatar = this.profileForm.avatarUrl;
 				uni.setStorageSync('VALLEY_USER_PROFILE', {
 					avatarUrl: avatar,
 					nickname: name
@@ -851,8 +879,8 @@
 					console.error('保存资料失败:', e);
 				}
 				this.showProfileModal = false;
-				const toastMsg = this.isRandomMode ? '资料保存成功' : '资料与读经数据已保全';
-				uni.showToast({ title: toastMsg, icon: 'success' });
+				this.isProfileForceModal = false;
+				uni.showToast({ title: '资料保存成功', icon: 'success' });
 			}
 		}
 	};

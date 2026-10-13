@@ -20,3 +20,6 @@ export const BIBLE_ASSETS_BASE = `${STATIC_BAK_BASE}/bible-mp3-cn`;
 
 // 免审核 H5 容器页面地址 (读经小队与社区)
 export const H5_TEAM_URL = `${SERVER_HOST}/h5/#/pages/bible/team`;
+
+// 查经资料大全根路径
+export const CHAJING_BASE_URL = `${SERVER_HOST}/chajing`;
