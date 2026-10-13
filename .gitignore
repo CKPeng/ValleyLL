@@ -15,3 +15,9 @@ server/script*.js
 *.recovered
 *_dump.txt
 .agy-backup/
+
+# 环境变量与密钥（绝不提交，只在服务器本地放真实值）
+.env
+.env.local
+.env.*.local
+server/.env

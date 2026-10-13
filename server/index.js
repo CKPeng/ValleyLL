@@ -11,12 +11,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// MySQL 连接池 (跨机连接 100.84.187.111 数据库服务器)
+// MySQL 连接池 (跨机连接数据库服务器，敏感信息只从环境变量读取，绝不硬编码)
+if (!process.env.MYSQL_PASSWORD) {
+    console.error('[致命] 缺少环境变量 MYSQL_PASSWORD，拒绝使用默认密码启动');
+    process.exit(1);
+}
 const pool = mysql.createPool({
     host: process.env.MYSQL_HOST || '100.84.187.111',
     port: parseInt(process.env.MYSQL_PORT) || 3306,
     user: process.env.MYSQL_USER || 'root',
-    password: process.env.MYSQL_PASSWORD || '(已删除的数据库密码)',
+    password: process.env.MYSQL_PASSWORD,
     database: process.env.MYSQL_DATABASE || 'file_manage_security',
     waitForConnections: true,
     connectionLimit: 10,
@@ -902,8 +906,13 @@ app.use('/api/bible', userRouter);
 // 4. 微信官方登录换取真实 OpenID 接口
 // ==========================================
 const wechatRouter = express.Router();
-const WX_APP_ID = process.env.WX_APP_ID || 'wx9c0cb9cd7690707e';
-const WX_APP_SECRET = process.env.WX_APP_SECRET || '(已删除的微信密钥)';
+const WX_APP_ID = process.env.WX_APP_ID;
+const WX_APP_SECRET = process.env.WX_APP_SECRET;
+// 微信密钥绝不允许硬编码：缺失则拒绝启动，避免带着空密钥对外提供登录接口
+if (!WX_APP_ID || !WX_APP_SECRET) {
+    console.error('[致命] 缺少环境变量 WX_APP_ID / WX_APP_SECRET，拒绝启动微信登录接口');
+    process.exit(1);
+}
 
 wechatRouter.post('/login', async (req, res) => {
     const { code } = req.body;

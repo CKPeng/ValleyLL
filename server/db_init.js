@@ -1,11 +1,15 @@
 const mysql = require('mysql2/promise');
 async function init() {
+    if (!process.env.MYSQL_PASSWORD) {
+        console.error('[致命] 缺少环境变量 MYSQL_PASSWORD，拒绝使用默认密码连接数据库');
+        process.exit(1);
+    }
     const pool = mysql.createPool({
-        host: '100.84.187.111',
-        port: 3306,
-        user: 'root',
-        password: '(已删除的数据库密码)',
-        database: 'file_manage_security'
+        host: process.env.MYSQL_HOST || '100.84.187.111',
+        port: parseInt(process.env.MYSQL_PORT) || 3306,
+        user: process.env.MYSQL_USER || 'root',
+        password: process.env.MYSQL_PASSWORD,
+        database: process.env.MYSQL_DATABASE || 'file_manage_security'
     });
     try {
         console.log('Connecting...');
