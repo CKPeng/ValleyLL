@@ -41,6 +41,7 @@ export default {
 			timerRunning: false,
 			timerInterval: null,
 			showTimerCompleteModal: false,
+			focusCompletedThisSession: false, // 标记本轮是否刚完成，防止滚动误唤醒重跑
 			elapsedSecondsSinceLastSync: 0,
 			lastPauseTimestamp: 0, // 手动暂停时间戳，用于惯性滚动防误唤醒冷却
 			pauseScrollTop: 0,      // 暂停时的滚动位置，用于位移判定
@@ -343,7 +344,7 @@ export default {
 			}
 
 			// 方案 A 增强：通过计划进入时，无论初次阅读还是暂停后，滚动屏幕均自动恢复专注计时
-			if (this.fromPlan && !this.timerRunning && this.timerSeconds > 0) {
+			if (this.fromPlan && !this.timerRunning && this.timerSeconds > 0 && !this.focusCompletedThisSession) {
 				const now = Date.now();
 				// 防惯性误唤醒保护：距离手动暂停必须超过 800ms，且产生了新的滚动位移 (> 20px)
 				const isCooledDown = !this.lastPauseTimestamp || (now - this.lastPauseTimestamp > 800);
@@ -782,6 +783,7 @@ export default {
 
 		// 番茄钟控制
 		toggleFocusTimer() {
+			this.focusCompletedThisSession = false;
 			if (this.timerRunning) {
 				this.pauseFocusTimer(false);
 			} else {
@@ -792,6 +794,7 @@ export default {
 		startFocusTimer(silent = false) {
 			if (this.timerRunning) return;
 			this.timerRunning = true;
+			this.focusCompletedThisSession = false;
 			if (this.timerInterval) clearInterval(this.timerInterval);
 
 			this.timerInterval = setInterval(() => {
@@ -854,7 +857,7 @@ export default {
 			this.pauseFocusTimer(true);
 			planManager.clearFocusTimerSession();
 			this.timerSeconds = 1500;
-			planManager.recordFocusSession(25);
+			this.focusCompletedThisSession = true; // 锁定本轮完成态，防止后续滚动立即自启下一轮
 
 			uni.vibrateLong();
 			this.showTimerCompleteModal = true;
@@ -862,10 +865,12 @@ export default {
 
 		closeTimerModal() {
 			this.showTimerCompleteModal = false;
+			this.focusCompletedThisSession = false;
 		},
 
 		backToPlan() {
 			this.showTimerCompleteModal = false;
+			this.focusCompletedThisSession = false;
 			const pages = getCurrentPages();
 			if (pages && pages.length > 1) {
 				uni.navigateBack();

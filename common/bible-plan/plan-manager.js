@@ -128,6 +128,19 @@ function pickFurtherSubTrack(localTrack, cloudTrack) {
   return cloudTrack;
 }
 
+// 全书总章数（用于循环保护上限）
+const TOTAL_CHAPTERS = bibleIndex.reduce((sum, b) => sum + (Number(b.chapters) || 0), 0) || 1189;
+
+// 获取下一章位置（读到第 66 卷末尾时回到创世记 1 章）
+function getNextChapterPos(sn, chapter) {
+  const book = bibleIndex.find(b => b.sn === sn);
+  if (book && chapter < book.chapters) {
+    return { sn, chapter: chapter + 1 };
+  }
+  const nextSn = sn + 1 > 66 ? 1 : sn + 1;
+  return { sn: nextSn, chapter: 1 };
+}
+
 class BiblePlanManager {
   constructor() {
     this.plan = null;
@@ -148,6 +161,27 @@ class BiblePlanManager {
           } else if (this.plan.status === 'NOT_STARTED' || this.plan.status === 'WAITING') {
             this.plan.status = PLAN_STATUS.COLD_START;
           }
+        }
+        // 数据自愈：修复历史异常数据（如番茄钟失控记录的 260 分钟校正为合理的 25 分钟，今日未读经清零）
+        if (this.plan) {
+          if (!this.plan.dailyFocusMinutes) this.plan.dailyFocusMinutes = {};
+          if (this.plan.dailyFocusMinutes['2026-10-12'] === 260) {
+            this.plan.dailyFocusMinutes['2026-10-12'] = 25;
+          }
+          for (const d in this.plan.dailyFocusMinutes) {
+            if (this.plan.dailyFocusMinutes[d] > 180) {
+              this.plan.dailyFocusMinutes[d] = 25;
+            }
+          }
+          const todayStr = getTodayString();
+          if (this.plan.lastFocusDate !== todayStr) {
+            this.plan.todayFocusMinutes = 0;
+            this.plan.lastFocusDate = todayStr;
+          } else if (this.plan.todayFocusMinutes >= 180) {
+            this.plan.todayFocusMinutes = 0;
+          }
+          // 轨道指针自愈：跳过已读章节（修复历史版本指针卡在已读章节的问题）
+          this.normalizeAllTrackPointers();
         }
       }
     } catch (e) {
@@ -264,14 +298,10 @@ class BiblePlanManager {
     const cloudFinished = cloudPlan.finishedChapters || {};
     const mergedFinished = { ...cloudFinished, ...localFinished };
 
-    // 2. 总字数、今日专注时长取最大值（防止任何进度被截断）
+    // 2. 总字数、专注总时长取最大值（防止任何进度被截断）
     const mergedTotalWords = Math.max(
       Number(localPlan.totalFinishedWords) || 0,
       Number(cloudPlan.totalFinishedWords) || 0
-    );
-    const mergedFocusMinutes = Math.max(
-      Number(localPlan.todayFocusMinutes) || 0,
-      Number(cloudPlan.todayFocusMinutes) || 0
     );
     const mergedFocusTotal = Math.max(
       Number(localPlan.focusMinutesTotal) || 0,
@@ -303,6 +333,43 @@ class BiblePlanManager {
     for (const d in localDailyFocus) {
       mergedDailyFocus[d] = Math.max(mergedDailyFocus[d] || 0, localDailyFocus[d] || 0);
     }
+    // 过滤/清洗历史异常值（如 10-12 的 260 分钟校正为 25 分钟）
+    if (mergedDailyFocus['2026-10-12'] === 260) {
+      mergedDailyFocus['2026-10-12'] = 25;
+    }
+    for (const d in mergedDailyFocus) {
+      if (mergedDailyFocus[d] > 180) {
+        mergedDailyFocus[d] = 25;
+      }
+    }
+
+    // 智能合并今日专注时长：严格校验 lastFocusDate，防止昨日甚至更早的历史数据跨天复活污染今天
+    const today = getTodayString();
+    let cloudTodayFocus = 0;
+    if (cloudPlan.lastFocusDate === today) {
+      cloudTodayFocus = Math.min(180, Number(cloudPlan.todayFocusMinutes) || 0);
+    } else if (cloudPlan.lastFocusDate && Number(cloudPlan.todayFocusMinutes) > 0) {
+      // 云端今日时长属于旧日期，归入对应旧日期的历史字典
+      const oldMins = Math.min(180, Number(cloudPlan.todayFocusMinutes));
+      mergedDailyFocus[cloudPlan.lastFocusDate] = Math.max(
+        mergedDailyFocus[cloudPlan.lastFocusDate] || 0,
+        oldMins
+      );
+    }
+
+    let localTodayFocus = 0;
+    if (localPlan.lastFocusDate === today) {
+      localTodayFocus = Math.min(180, Number(localPlan.todayFocusMinutes) || 0);
+    } else if (localPlan.lastFocusDate && Number(localPlan.todayFocusMinutes) > 0) {
+      // 本地今日时长属于旧日期，归入对应旧日期的历史字典
+      const oldMins = Math.min(180, Number(localPlan.todayFocusMinutes));
+      mergedDailyFocus[localPlan.lastFocusDate] = Math.max(
+        mergedDailyFocus[localPlan.lastFocusDate] || 0,
+        oldMins
+      );
+    }
+
+    const mergedFocusMinutes = Math.max(localTodayFocus, cloudTodayFocus);
 
     // 4. 状态合并 (大写枚举统一)
     let mergedStatus = localPlan.status || cloudPlan.status || PLAN_STATUS.PLANNING;
@@ -329,9 +396,10 @@ class BiblePlanManager {
       targetWeeks: cloudPlan.targetWeeks || localPlan.targetWeeks || 26,
       dailyTargetWords: mergedDailyTarget,
       weeklyTargetWords: mergedDailyTarget * 7,
-      startDate: cloudPlan.startDate || localPlan.startDate || getTodayString(),
+      startDate: cloudPlan.startDate || localPlan.startDate || today,
       timeSlot: cloudPlan.timeSlot || localPlan.timeSlot || TIME_SLOT.NIGHT,
-      lastReadDate: localPlan.lastReadDate || cloudPlan.lastReadDate || getTodayString()
+      lastReadDate: localPlan.lastReadDate || cloudPlan.lastReadDate || today,
+      lastFocusDate: today
     };
   }
 
@@ -378,6 +446,8 @@ class BiblePlanManager {
     if (!cloudPlan) return;
     // 智能并集合并，杜绝直接覆盖造成老用户数据丢失
     this.plan = this.mergePlans(this.plan, cloudPlan);
+    // 合并后以已读记录为准校正指针（修复：读完启示录绕回创世记后被云端旧指针覆盖回退的问题）
+    this.normalizeAllTrackPointers();
     try {
       uni.setStorageSync(STORAGE_KEY, this.plan);
     } catch (e) {}
@@ -600,21 +670,55 @@ class BiblePlanManager {
     }
     if (!targetTrack) return;
 
-    if (chapter < book.chapters) {
-      targetTrack.chapter = chapter + 1;
-    } else {
-      let nextSn = sn + 1;
-      if (nextSn > 66) {
-        nextSn = 1; // 全书66卷读完，回到创世记开新一轮
-      }
-      const nextBook = bibleIndex.find(b => b.sn === nextSn);
-      if (nextBook) {
-        targetTrack.sn = nextBook.sn;
-        targetTrack.bookId = nextBook.bookId;
-        targetTrack.chapter = 1;
-      }
+    const next = getNextChapterPos(sn, chapter);
+    const nextBook = bibleIndex.find(b => b.sn === next.sn);
+    if (nextBook) {
+      targetTrack.sn = nextBook.sn;
+      targetTrack.bookId = nextBook.bookId;
+      targetTrack.chapter = next.chapter;
     }
+    // 推进后继续跳过已读章节，确保指针永远停在「第一章未读」
+    this.normalizeTrackPointer(targetTrack);
   }
+
+  // 获取某章的打卡日期（未读返回 null）
+  getChapterFinishedDate(sn, chapter) {
+    const records = (this.plan && this.plan.finishedChapters) || {};
+    const item = records[`volume-${sn}-chapter-${chapter}`];
+    return item ? (item.date || '1970-01-01') : null;
+  }
+
+  // 轨道指针自愈：从当前位置向后跳过所有已读章节，停在第一章未读处
+  // 最多遍历全书一轮；若全书都已读则保持原样。返回是否发生了变化
+  normalizeTrackPointer(track) {
+    if (!track || !track.sn) return false;
+    let pos = { sn: Number(track.sn), chapter: Number(track.chapter) || 1 };
+    let moved = false;
+    for (let i = 0; i < TOTAL_CHAPTERS; i++) {
+      if (!this.getChapterFinishedDate(pos.sn, pos.chapter)) {
+        if (moved) {
+          const book = bibleIndex.find(b => b.sn === pos.sn);
+          if (!book) return false;
+          track.sn = book.sn;
+          track.bookId = book.bookId;
+          track.chapter = pos.chapter;
+        }
+        return moved;
+      }
+      pos = getNextChapterPos(pos.sn, pos.chapter);
+      moved = true;
+    }
+    return false; // 全书均已读，不做调整
+  }
+
+  normalizeAllTrackPointers() {
+    if (!this.plan) return false;
+    const a = this.normalizeTrackPointer(this.plan.mainTrack);
+    const b = this.normalizeTrackPointer(this.plan.subTrack);
+    return a || b;
+  }
+
+
 
   // 真实秒数平滑累加（离开页面、暂停、打卡或定时器结算时调用，读多久记多久）
   accumulateFocusSeconds(seconds) {
@@ -634,7 +738,8 @@ class BiblePlanManager {
       this.plan.lastFocusDate = today;
     }
 
-    // 至少30秒折算为1分钟，其他按四舍五入或进位计算，保证短时阅读不丢失
+    // 至少30秒折算为1分钟（不足30秒不计入，避免切章/暂停频繁虚增）
+    if (seconds < 30) return 0;
     const addedMinutes = Math.max(1, Math.round(seconds / 60));
     this.plan.todayFocusMinutes = (this.plan.todayFocusMinutes || 0) + addedMinutes;
     this.plan.focusMinutesTotal = (this.plan.focusMinutesTotal || 0) + addedMinutes;
@@ -717,10 +822,12 @@ class BiblePlanManager {
       this.plan.mainTrack.sn = book.sn;
       this.plan.mainTrack.bookId = book.bookId;
       this.plan.mainTrack.chapter = chapter;
+      this.normalizeTrackPointer(this.plan.mainTrack);
     } else if (trackType === 'sub' && this.plan.subTrack) {
       this.plan.subTrack.sn = book.sn;
       this.plan.subTrack.bookId = book.bookId;
       this.plan.subTrack.chapter = chapter;
+      this.normalizeTrackPointer(this.plan.subTrack);
     }
     this.save();
   }
@@ -750,42 +857,92 @@ class BiblePlanManager {
     }
 
     const weeklyTargetWords = this.plan.weeklyTargetWords || 35000;
-    let status = WEEK_STATUS.ON_TRACK;
-    const wordBalance = weekFinishedWords - weeklyTargetWords; // 负数为落后，正数为超额
-
-    if (wordBalance < -4000) {
-      status = WEEK_STATUS.BEHIND;
-    } else if (wordBalance > 1500) {
-      status = WEEK_STATUS.AHEAD;
-    }
-
-    // 计算本周已过去的天数和本周剩余天数（含今天）
-    // 周日为第 1 天（剩余 7 天），周一为第 2 天（剩余 6 天）... 周六为第 7 天（剩余 1 天）
-    const dayOfWeek = now.getDay(); // 0 是周日, 1-6 是周一到周六
-    const remainingDaysThisWeek = 7 - dayOfWeek; // 7 (周日) 到 1 (周六)
-
-    // 计算今日之前的本周已读字数
+    const baseDailyTarget = this.plan.dailyTargetWords || 5000;
     const todayStr = getTodayString();
+
+    // 计算本周已过去的天数和本周剩余天数
+    // 周日为第 1 天（index 0，过去1天），周一为第 2 天（index 1，过去2天）... 周六为第 7 天（index 6，过去7天）
+    const dayOfWeek = now.getDay(); // 0(周日) ~ 6(周六)
+    const elapsedDaysThisWeek = dayOfWeek + 1; // 1 ~ 7
+    const remainingDaysThisWeek = 7 - dayOfWeek; // 包含今天在内本周还剩几天（7 到 1）
+
+    // 今日已读字数
+    let todayFinishedWords = 0;
+    // 今日之前本周已读字数
     let wordsReadBeforeTodayThisWeek = 0;
+
     for (const key in records) {
       const item = records[key];
+      if (item.date === todayStr) {
+        todayFinishedWords += (item.words || 0);
+      }
       if (item.date >= thisSundayStr && item.date < todayStr) {
         wordsReadBeforeTodayThisWeek += (item.words || 0);
       }
     }
 
-    // 动态摊销计算：剩余所需字数平均分配到本周剩下天数（包含今天）
-    const remainingWordsNeeded = Math.max(0, weeklyTargetWords - wordsReadBeforeTodayThisWeek);
-    const baseDailyTarget = this.plan.dailyTargetWords || 5000;
-    let dynamicDailyTarget = Math.round(remainingWordsNeeded / remainingDaysThisWeek);
-
-    // 平滑保护阈值（避免极端过高或过低）：上下浮动在 2000 ~ 9000 字之间
-    if (remainingWordsNeeded === 0) {
-      // 本周已提前全部达成，今日给一个轻松保底配额（约2000字，自由读）
+    // 动态摊销计算：将本周截止今天还差的字数平均分配到包含今天在内的剩余天数
+    const remainingWordsNeededFromToday = Math.max(0, weeklyTargetWords - wordsReadBeforeTodayThisWeek);
+    let dynamicDailyTarget = Math.round(remainingWordsNeededFromToday / remainingDaysThisWeek);
+    if (remainingWordsNeededFromToday === 0) {
       dynamicDailyTarget = 2000;
     } else {
       dynamicDailyTarget = Math.max(2000, Math.min(dynamicDailyTarget, 9000));
     }
+
+    // 判断今天是否已经达成目标（达到动态目标或基础日目标其一，即视为今日达标）
+    const isTodayFinished = todayFinishedWords >= Math.min(dynamicDailyTarget, baseDailyTarget);
+
+    // 计算往后几天（从明天开始到周末）平均每天需要阅读的字数
+    const remainingDaysAfterToday = 6 - dayOfWeek; // 明天到周六剩余天数（0 ~ 6）
+    const remainingWordsAfterToday = Math.max(0, weeklyTargetWords - weekFinishedWords);
+    let futureDailyAverageWords = 0;
+    if (remainingDaysAfterToday > 0) {
+      futureDailyAverageWords = Math.round(remainingWordsAfterToday / remainingDaysAfterToday);
+    } else {
+      // 若今天是周六，已是本周最后一天
+      futureDailyAverageWords = remainingWordsAfterToday;
+    }
+
+    // 节奏判定：对比「定制每日目标」与「往后几天日均所需字数」
+    // 后续日均明显低于定制目标 => 偏快；明显高于 => 偏慢；容差内 => 正常
+    const expectedWordsToDate = Math.round((weeklyTargetWords / 7) * elapsedDaysThisWeek);
+    const paceDiff = weekFinishedWords - expectedWordsToDate; // 仅作参考展示
+    const paceTolerance = Math.max(500, Math.round(baseDailyTarget * 0.15));
+    const futureVsBase = futureDailyAverageWords - baseDailyTarget; // 负数=后续压力更小
+
+    let paceRate = '正常'; // '偏快' | '正常' | '偏慢'
+    if (weekFinishedWords >= weeklyTargetWords || futureVsBase <= -paceTolerance) {
+      paceRate = '偏快';
+    } else if (futureVsBase >= paceTolerance) {
+      paceRate = '偏慢';
+    }
+
+    // 综合判定 WEEK_STATUS 枚举状态（用于标签色彩和统合）
+    let status = WEEK_STATUS.ON_TRACK;
+    if (weekFinishedWords >= weeklyTargetWords) {
+      status = WEEK_STATUS.AHEAD;
+    } else if (paceRate === '偏快') {
+      status = WEEK_STATUS.AHEAD;
+    } else if (paceRate === '偏慢' && !isTodayFinished) {
+      // 只有在节奏偏慢且今日尚未完成的情况下，才标记为 BEHIND
+      status = WEEK_STATUS.BEHIND;
+    } else {
+      status = WEEK_STATUS.ON_TRACK;
+    }
+
+    const tips = this.getWeeklyEncourageTip({
+      status,
+      paceRate,
+      isTodayFinished,
+      todayFinishedWords,
+      dynamicDailyTarget,
+      weekFinishedWords,
+      weeklyTargetWords,
+      remainingDaysAfterToday,
+      futureDailyAverageWords,
+      paceDiff
+    });
 
     return {
       currentWeekNumber,
@@ -793,24 +950,72 @@ class BiblePlanManager {
       weeklyTargetWords,
       weekFinishedWords,
       weekReadChapters,
-      wordBalance,
+      wordBalance: paceDiff, // 进度相对当前天数的差额（更科学直观）
       status,
+      paceRate,
+      isTodayFinished,
+      todayFinishedWords,
       remainingDaysThisWeek,
+      remainingDaysAfterToday,
+      futureDailyAverageWords,
       dynamicDailyTarget,
       baseDailyTarget,
-      tips: this.getWeeklyEncourageTip(status, wordBalance)
+      tips
     };
   }
 
-  getWeeklyEncourageTip(status, wordBalance) {
-    if (status === WEEK_STATUS.BEHIND) {
-      const abs = Math.abs(wordBalance);
-      return `本周落后约 ${abs.toLocaleString()} 字，系统已自动按天平摊至后续几天，从容跟进即可！`;
+  getWeeklyEncourageTip(context) {
+    if (typeof context !== 'object') {
+      return '本周字数步调匀称健康，继续保持节奏，从容吸纳神的话语。';
     }
-    if (status === WEEK_STATUS.AHEAD) {
-      return `本周已超额完成约 ${wordBalance.toLocaleString()} 字！后续几天配额已自动减轻，今天可轻松享受。`;
+
+    const {
+      status,
+      paceRate,
+      isTodayFinished,
+      remainingDaysAfterToday,
+      futureDailyAverageWords,
+      weekFinishedWords,
+      weeklyTargetWords
+    } = context;
+
+    // 1. 本周整周已经全部读完
+    if (weekFinishedWords >= weeklyTargetWords) {
+      return `🎉 本周目标已提前圆满达成！读经节奏超前，往后几天可自由静心默想或轻松重温。`;
     }
-    return '本周字数步调匀称健康，继续保持节奏，从容吸纳神的话语。';
+
+    // 2. 如果今天已经完成任务
+    if (isTodayFinished) {
+      if (remainingDaysAfterToday > 0) {
+        return `今日任务已圆满完成！当前读经节奏【${paceRate}】，后续 ${remainingDaysAfterToday} 天日均只需阅读约 ${futureDailyAverageWords.toLocaleString()} 字，从容保持即可。`;
+      } else {
+        return `今日任务已圆满完成！今天是本周最后一天，当前读经节奏【${paceRate}】，做得非常棒！`;
+      }
+    }
+
+    // 3. 今天尚未完成任务
+    if (paceRate === '偏快') {
+      if (remainingDaysAfterToday > 0) {
+        return `当前读经节奏【偏快】，进度领先！后续几天日均仅需约 ${futureDailyAverageWords.toLocaleString()} 字，今日按计划跟进即可。`;
+      } else {
+        return `当前读经节奏【偏快】，冲刺完成今日份额即可圆满收官本周目标！`;
+      }
+    }
+
+    if (paceRate === '偏慢') {
+      if (remainingDaysAfterToday > 0) {
+        return `当前读经节奏【偏慢】，完成今日阅读后，后续 ${remainingDaysAfterToday} 天日均约需 ${futureDailyAverageWords.toLocaleString()} 字，稳扎稳打从容跟进！`;
+      } else {
+        return `本周已到冲刺阶段，当前节奏【偏慢】，今日还需阅读约 ${futureDailyAverageWords.toLocaleString()} 字即可填平本周总账，加油！`;
+      }
+    }
+
+    // 4. 正常节奏
+    if (remainingDaysAfterToday > 0) {
+      return `当前读经节奏【正常】，步调匀称健康！后续几天日均约需阅读 ${futureDailyAverageWords.toLocaleString()} 字，继续保持专注。`;
+    } else {
+      return `当前读经节奏【正常】，完成今日阅读即可达成全周目标，享受与主亲近的时光！`;
+    }
   }
 
   // 获取各周完成情况及各周每日7天明细列表（用于周进度独立历史页面）
@@ -881,8 +1086,9 @@ class BiblePlanManager {
           }
         }
 
-        const focusMins = (this.plan.dailyFocusMinutes && this.plan.dailyFocusMinutes[dayDateStr]) || 
-                          (isToday ? (this.plan.todayFocusMinutes || 0) : 0);
+        let focusMins = (this.plan.dailyFocusMinutes && this.plan.dailyFocusMinutes[dayDateStr]) || 
+                        (isToday ? (this.plan.todayFocusMinutes || 0) : 0);
+        if (focusMins > 180) focusMins = 25;
 
         days.push({
           dateStr: dayDateStr,
@@ -939,9 +1145,14 @@ class BiblePlanManager {
     return weekList.reverse();
   }
 
-  // 核心：基于【动态字数驱动】的今日推荐打包算法
+  // 核心：基于【动态字数驱动】的今日推荐打包算法（方案B：仅推荐当前未读篇章，已读章节不重复出现在推荐列表中）
   getTodayRecommendation() {
-    const mainSn = this.plan.mainTrack.sn;
+    // 先自愈校正轨道指针（跳过已读章节，确保指针永远停在第一章未读处）
+    if (this.normalizeAllTrackPointers()) {
+      this.save();
+    }
+
+    const mainSn = Number(this.plan.mainTrack.sn);
     const mainBook = bibleIndex.find(b => b.sn === mainSn) || bibleIndex[0];
     const mainMeta = BOOK_METAS[mainBook.bookId] || { difficulty: DIFFICULTY_LEVEL.SMOOTH };
 
@@ -956,72 +1167,54 @@ class BiblePlanManager {
     const mainTargetWords = isHard ? Math.round(dailyTarget * 0.64) : dailyTarget;
     const subTargetWords = isHard ? Math.round(dailyTarget * 0.36) : 0;
 
-    // 1. 打包主轨章节（直到累计字数满足 mainTargetWords）
-    const mainList = [];
-    let mainAccumWords = 0;
-    let curChap = this.plan.mainTrack.chapter;
-    let tempSn = mainSn;
-    let tempBook = mainBook;
+    // 通用打包函数：从当前指针向后逐章累加未读章节，直到满足目标字数
+    const packTrack = (startPos, targetWords, fixedDifficulty, defaultTag) => {
+      const list = [];
+      let accum = 0;
+      let pos = startPos ? { sn: Number(startPos.sn), chapter: Number(startPos.chapter) } : null;
+      let guard = 0;
+      while (pos && accum < targetWords && guard < TOTAL_CHAPTERS) {
+        guard++;
+        const book = bibleIndex.find(b => b.sn === pos.sn);
+        if (!book) break;
 
-    while (mainAccumWords < mainTargetWords && tempSn <= 66) {
-      const estWords = getEstimatedChapterWords(tempBook.bookId, curChap);
-      const isFinished = this.isChapterFinished(tempSn, curChap);
+        // 若已读（无论是历史已读还是今日已读），直接跳过（方案B：推荐列表只展示待读任务）
+        if (this.isChapterFinished(pos.sn, pos.chapter)) {
+          pos = getNextChapterPos(pos.sn, pos.chapter);
+          continue;
+        }
 
-      mainList.push({
-        sn: tempSn,
-        bookId: tempBook.bookId,
-        bookName: tempBook.fullName,
-        shortName: tempBook.shortName,
-        chapter: curChap,
-        words: estWords,
-        isFinished: isFinished,
-        difficulty: (BOOK_METAS[tempBook.bookId] || {}).difficulty || DIFFICULTY_LEVEL.SMOOTH,
-        tag: (BOOK_METAS[tempBook.bookId] || {}).tag || '旧约篇章'
-      });
-
-      mainAccumWords += estWords;
-      curChap++;
-      if (curChap > tempBook.chapters) {
-        tempSn++;
-        tempBook = bibleIndex.find(b => b.sn === tempSn);
-        curChap = 1;
-        if (!tempBook) break;
+        const estWords = getEstimatedChapterWords(book.bookId, pos.chapter);
+        const meta = BOOK_METAS[book.bookId] || {};
+        list.push({
+          sn: pos.sn,
+          bookId: book.bookId,
+          bookName: book.fullName,
+          shortName: book.shortName,
+          chapter: pos.chapter,
+          words: estWords,
+          isFinished: false,
+          difficulty: fixedDifficulty || meta.difficulty || DIFFICULTY_LEVEL.SMOOTH,
+          tag: meta.tag || defaultTag
+        });
+        accum += estWords;
+        pos = getNextChapterPos(pos.sn, pos.chapter);
       }
-    }
+      return { list, accum };
+    };
 
-    // 2. 打包辅轨章节（新约/诗歌，直到满足 subTargetWords）
-    const subList = [];
+    // 1. 打包主轨待读章节（直到累计字数满足 mainTargetWords）
+    const mainPacked = packTrack(this.plan.mainTrack, mainTargetWords, null, '旧约篇章');
+    const mainList = mainPacked.list;
+    const mainAccumWords = mainPacked.accum;
+
+    // 2. 打包辅轨待读章节（新约/诗歌，直到满足 subTargetWords）
+    let subList = [];
     let subAccumWords = 0;
     if (isHard && subTargetWords > 0) {
-      let subChap = this.plan.subTrack.chapter;
-      let subSn = this.plan.subTrack.sn;
-      let subBook = bibleIndex.find(b => b.sn === subSn) || bibleIndex[39];
-
-      while (subAccumWords < subTargetWords && subSn <= 66) {
-        const estWords = getEstimatedChapterWords(subBook.bookId, subChap);
-        const isFinished = this.isChapterFinished(subSn, subChap);
-
-        subList.push({
-          sn: subSn,
-          bookId: subBook.bookId,
-          bookName: subBook.fullName,
-          shortName: subBook.shortName,
-          chapter: subChap,
-          words: estWords,
-          isFinished: isFinished,
-          difficulty: DIFFICULTY_LEVEL.SWEET,
-          tag: (BOOK_METAS[subBook.bookId] || {}).tag || '新约/诗歌'
-        });
-
-        subAccumWords += estWords;
-        subChap++;
-        if (subChap > subBook.chapters) {
-          subSn++;
-          subBook = bibleIndex.find(b => b.sn === subSn);
-          subChap = 1;
-          if (!subBook) break;
-        }
-      }
+      const subPacked = packTrack(this.plan.subTrack, subTargetWords, DIFFICULTY_LEVEL.SWEET, '新约/诗歌');
+      subList = subPacked.list;
+      subAccumWords = subPacked.accum;
     }
 
     // 生成动态提示文案
