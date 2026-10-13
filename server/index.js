@@ -7,6 +7,9 @@ const multer = require('multer');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
+// 优先加载 server/.env（本地开发/部署用；缺失则直接使用进程环境变量）
+try { require('dotenv').config(); } catch (e) { /* 未安装 dotenv 时跳过 */ }
+
 const app = express();
 app.use(cors());
 app.use(express.json());
